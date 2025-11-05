@@ -16,6 +16,7 @@
 
 import Foundation
 internal import Combine
+import UIKit
 
 enum AppUpdateState {
     case upToDate
@@ -30,6 +31,7 @@ class VersionChecker: ObservableObject {
     @Published var minVersion: String = ""
     @Published var latestVersion: String = ""
     @Published var currentVersion: String = ""
+    @Published var deviceID: String = ""
 
     private let versionURL = URL(string: "https://firestore.googleapis.com/v1/projects/kochioneversioncontrol/databases/(default)/documents/appConfig/ios")!
 
@@ -43,6 +45,7 @@ class VersionChecker: ObservableObject {
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let fields = json["fields"] as? [String: Any],
                   let minVersion = (fields["minVersion"] as? [String: String])?["stringValue"],
+                  let deviceID = UIDevice.current.identifierForVendor?.uuidString,
                   let latestVersion = (fields["latestVersion"] as? [String: String])?["stringValue"] else {
                 
                 DispatchQueue.main.async {
@@ -58,6 +61,7 @@ class VersionChecker: ObservableObject {
             - Minimum required: \(minVersion)
             - Latest available: \(latestVersion)
             - Current app: \(currentVersion)
+            - Divice id: \(deviceID)
             """)
 
             DispatchQueue.main.async {
