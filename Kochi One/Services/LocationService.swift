@@ -1,6 +1,6 @@
 import Foundation
 import CoreLocation
-import Combine
+internal import Combine
 
 class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()

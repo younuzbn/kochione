@@ -7,7 +7,7 @@
 
 import SwiftUI
 import MapKit
-import Combine
+internal import Combine
 
 
 

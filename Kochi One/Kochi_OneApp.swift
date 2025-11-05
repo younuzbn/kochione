@@ -9,9 +9,19 @@ import SwiftUI
 
 @main
 struct Kochi_OneApp: App {
+    @AppStorage("hasSeenIntro", store: UserDefaults.standard) private var hasSeenIntro: Bool = false
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if hasSeenIntro {
+                AppEntryView()
+                    
+            }
+            else{
+                IntroView()
+                   
+            }
         }
     }
 }
+
+

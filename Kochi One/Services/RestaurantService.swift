@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+internal import Combine
 
 class RestaurantService: ObservableObject {
     private let baseURL = "https://codecastle.store/api"
