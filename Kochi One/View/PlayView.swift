@@ -10,7 +10,7 @@ import SwiftUI
 struct PlayView: View {
     @State private var cornerRadius: CGFloat = 15
     var body: some View {
-       VStack {
+       ScrollView {
             HStack{
                 VStack {
                     VStack{
