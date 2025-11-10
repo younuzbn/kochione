@@ -26,7 +26,7 @@ struct AppEntryView: View {
             ProgressView()
 
         case .forceUpdate:
-            SheetVersion(
+            UpdateView(
                 minVersion: versionChecker.minVersion,
                 latestVersion: versionChecker.latestVersion,
                 currentVersion: versionChecker.currentVersion,
@@ -36,7 +36,7 @@ struct AppEntryView: View {
         case .optionalUpdate:
             ContentView()
                 .fullScreenCover(isPresented: $showUpdateSheet) {
-                    SheetVersion(
+                    UpdateView(
                         minVersion: versionChecker.minVersion,
                         latestVersion: versionChecker.latestVersion,
                         currentVersion: versionChecker.currentVersion,
