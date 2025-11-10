@@ -258,6 +258,7 @@
 				DEVELOPMENT_TEAM = AQH9WKMUGF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Kochi-One-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = testcase02;
 				INFOPLIST_KEY_NSCameraUsageDescription = "need camera access to scan qr codes";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "App Need Your Location To Fetch Nearby Places";
@@ -298,6 +299,7 @@
 				DEVELOPMENT_TEAM = AQH9WKMUGF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Kochi-One-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = testcase02;
 				INFOPLIST_KEY_NSCameraUsageDescription = "need camera access to scan qr codes";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "App Need Your Location To Fetch Nearby Places";

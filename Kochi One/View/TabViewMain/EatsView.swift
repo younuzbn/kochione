@@ -8,6 +8,89 @@
 import SwiftUI
 import CoreLocation
 
+// Map App Types
+enum MapApp: String, Identifiable {
+    case appleMaps = "Apple Maps"
+    case googleMaps = "Google Maps"
+    case waze = "Waze"
+    
+    var id: String { rawValue }
+    
+    var urlScheme: String {
+        switch self {
+        case .appleMaps:
+            return "http://maps.apple.com/"
+        case .googleMaps:
+            return "comgooglemaps://"
+        case .waze:
+            return "waze://"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .appleMaps:
+            return "map.fill"
+        case .googleMaps:
+            return "map.fill"
+        case .waze:
+            return "map.fill"
+        }
+    }
+    
+    // Check if the map app is available on the device
+    static func availableApps() -> [MapApp] {
+        var available: [MapApp] = []
+        
+        // Apple Maps is always available on iOS
+        available.append(.appleMaps)
+        
+        // Check Google Maps
+        if let url = URL(string: "comgooglemaps://") {
+            if UIApplication.shared.canOpenURL(url) {
+                available.append(.googleMaps)
+            }
+        }
+        
+        // Check Waze
+        if let url = URL(string: "waze://") {
+            if UIApplication.shared.canOpenURL(url) {
+                available.append(.waze)
+            }
+        }
+        
+        return available
+    }
+    
+    // Generate URL for navigation with coordinates and business name
+    func navigationURL(latitude: Double, longitude: Double, businessName: String? = nil) -> URL? {
+        switch self {
+        case .appleMaps:
+            // Apple Maps supports q parameter with label
+            if let name = businessName, !name.isEmpty {
+                let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
+                return URL(string: "http://maps.apple.com/?daddr=\(latitude),\(longitude)&q=\(encodedName)&dirflg=d")
+            } else {
+                return URL(string: "http://maps.apple.com/?daddr=\(latitude),\(longitude)&dirflg=d")
+            }
+        case .googleMaps:
+            // Google Maps: Use daddr for navigation (not q which just shows location)
+            // For business name, we can append it to coordinates with + separator
+            if let name = businessName, !name.isEmpty {
+                let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
+                // Format: daddr=latitude,longitude+label for navigation with label
+                return URL(string: "comgooglemaps://?daddr=\(latitude),\(longitude)+\(encodedName)&directionsmode=driving")
+            } else {
+                return URL(string: "comgooglemaps://?daddr=\(latitude),\(longitude)&directionsmode=driving")
+            }
+        case .waze:
+            // Waze doesn't support labels in URL scheme, but we can try adding it as a note
+            // Note: Waze URL scheme doesn't officially support business names
+            return URL(string: "waze://?ll=\(latitude),\(longitude)&navigate=yes")
+        }
+    }
+}
+
 // Main EatsView function that handles search integration
 func EatsView(activeSheet: Binding<BottomBarView.SheetType?>, locationService: LocationService, restaurantService: RestaurantService, selectedRestaurantName: Binding<String?>) -> some View {
     EatsViewM(restaurantService: restaurantService, locationService: locationService, selectedRestaurantName: selectedRestaurantName)
@@ -19,6 +102,7 @@ struct EatsViewFull: View {
     @Binding var showDetail: Bool
     let restaurant: Restaurant
     @ObservedObject var locationService: LocationService
+    @State private var showMapPicker = false
    
     var body: some View {
         /// Remove the NavigationStack here, as IndividualTabView is already in a ScrollView
@@ -110,23 +194,65 @@ struct EatsViewFull: View {
                     }
                     
                     HStack {
-                                            // 1. Message/Comment Button
+                                            // 1. Call Button
                                             Button {
-                                                print("Comment button tapped")
-                                                // Action: Maybe set a sheet to show comments, or navigate
-                                                // activeSheet = .commentsSheet // Example action
+                                                print("Call button tapped")
+                                                // Action: Make a phone call to the restaurant
+                                                let phoneNumber = restaurant.contact.phone
+                                                guard !phoneNumber.isEmpty else {
+                                                    print("Phone number is empty")
+                                                    return
+                                                }
+                                                
+                                                // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
+                                                let cleanedNumber = phoneNumber
+                                                    .replacingOccurrences(of: " ", with: "")
+                                                    .replacingOccurrences(of: "-", with: "")
+                                                    .replacingOccurrences(of: "(", with: "")
+                                                    .replacingOccurrences(of: ")", with: "")
+                                                    .replacingOccurrences(of: ".", with: "")
+                                                
+                                                if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                                                    if UIApplication.shared.canOpenURL(phoneURL) {
+                                                        UIApplication.shared.open(phoneURL)
+                                                    } else {
+                                                        print("Cannot open phone URL: \(phoneURL)")
+                                                    }
+                                                } else {
+                                                    print("Invalid phone number format: \(cleanedNumber)")
+                                                }
                                             } label: {
-                                                Image(systemName: "message")
+                                                Image(systemName: "phone")
                                             }
                                             
                                             Spacer()
                                             
-                                            // 2. Repost Button
+                                            // 2. Navigation Button
                                             Button {
-                                                print("Repost button tapped")
-                                                // Action: Initiate repost logic
+                                                print("Navigation button tapped")
+                                                // Show map picker if multiple apps available, otherwise open directly
+                                                let availableApps = MapApp.availableApps()
+                                                if availableApps.count == 1, let app = availableApps.first {
+                                                    // Only one app available, open directly
+                                                    if let url = app.navigationURL(latitude: restaurant.location.latitude, longitude: restaurant.location.longitude, businessName: restaurant.name) {
+                                                        UIApplication.shared.open(url)
+                                                    }
+                                                } else {
+                                                    // Multiple apps available, show picker
+                                                    showMapPicker = true
+                                                }
                                             } label: {
-                                                Image(systemName: "arrow.trianglehead.bottomleft.capsulepath.clockwise")
+                                                Image(systemName: "location")
+                                            }
+                                            .confirmationDialog("Choose Navigation App", isPresented: $showMapPicker, titleVisibility: .visible) {
+                                                ForEach(MapApp.availableApps()) { app in
+                                                    Button(app.rawValue) {
+                                                        if let url = app.navigationURL(latitude: restaurant.location.latitude, longitude: restaurant.location.longitude, businessName: restaurant.name) {
+                                                            UIApplication.shared.open(url)
+                                                        }
+                                                    }
+                                                }
+                                                Button("Cancel", role: .cancel) { }
                                             }
 
                                             Spacer()
