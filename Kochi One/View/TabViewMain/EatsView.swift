@@ -61,7 +61,8 @@ enum MapApp: String, Identifiable {
         
         return available
     }
-    
+   
+  
     // Generate URL for navigation with coordinates and business name
     func navigationURL(latitude: Double, longitude: Double, businessName: String? = nil) -> URL? {
         switch self {
@@ -95,6 +96,91 @@ enum MapApp: String, Identifiable {
 func EatsView(activeSheet: Binding<BottomBarView.SheetType?>, locationService: LocationService, restaurantService: RestaurantService, selectedRestaurantName: Binding<String?>) -> some View {
     EatsViewM(restaurantService: restaurantService, locationService: locationService, selectedRestaurantName: selectedRestaurantName)
 }
+//---------------------------------------------------//
+//MARK: operatingHours FINDER
+//let restauran:Restaurant
+//let operatingHours = restauran.operatingHours
+//
+//func getTodayHours() -> (isClosed: Bool, opening: String, closing: String) {
+//    let formatter = DateFormatter()
+//    formatter.dateFormat = "EEEE"
+//    
+//    let today = formatter.string(from: Date()).lowercased()
+//    
+//    let data = operatingHours[today]!
+//    let closed = data["closed"] as? Bool ?? true
+//    let opening = data["openingTime"] as? String ?? ""
+//    let closing = data["closingTime"] as? String ?? ""
+//    
+//    return (closed, opening, closing)
+//}
+
+//MARK: 24HR TO 12 HR
+//func convertTo12Hour(_ time24: String) -> String {
+//    let formatter = DateFormatter()
+//    formatter.dateFormat = "HH:mm"
+//    formatter.locale = .init(identifier: "en_US_POSIX")
+//
+//    let outputFormatter = DateFormatter()
+//    outputFormatter.dateFormat = "hh:mm a"
+//    outputFormatter.locale = .init(identifier: "en_US_POSIX")
+//
+//    if let date = formatter.date(from: time24) {
+//        return outputFormatter.string(from: date)
+//    } else {
+//        return "Invalid time"
+//    }
+//}
+
+
+//MARK: STOREOPEN FINDER
+
+//func isStoreOpen(opening: String, closing: String) -> Bool {
+//    let formatter = DateFormatter()
+//    formatter.dateFormat = "HH:mm"
+//    formatter.locale = .init(identifier: "en_US_POSIX")
+//    
+//    guard let openDate = formatter.date(from: opening),
+//          let closeDate = formatter.date(from: closing) else {
+//        return false
+//    }
+//    
+//    let now = Date()
+//    let calendar = Calendar.current
+//    
+//    let todayOpen = calendar.date(
+//        bySettingHour: calendar.component(.hour, from: openDate),
+//        minute: calendar.component(.minute, from: openDate),
+//        second: 0,
+//        of: now
+//    )!
+//    
+//    let todayClose = calendar.date(
+//        bySettingHour: calendar.component(.hour, from: closeDate),
+//        minute: calendar.component(.minute, from: closeDate),
+//        second: 0,
+//        of: now
+//    )!
+//    
+//    return now >= todayOpen && now <= todayClose
+//}
+// MARK: Get Today’s Data
+//func getTodayHours() -> (isClosed: Bool, opening: String, closing: String) {
+//    let formatter = DateFormatter()
+//    formatter.dateFormat = "EEEE"
+//    
+//    let today = formatter.string(from: Date()).lowercased()
+//    
+//    let data = operatingHours[today]!
+//    let closed = data["closed"] as? Bool ?? true
+//    let opening = data["openingTime"] as? String ?? ""
+//    let closing = data["closingTime"] as? String ?? ""
+//    
+//    return (closed, opening, closing)
+//}
+
+
+
 
 // --- The original post template view ---
 struct EatsViewFull: View {
@@ -223,6 +309,7 @@ struct EatsViewFull: View {
                                                 }
                                             } label: {
                                                 Image(systemName: "phone")
+                                                
                                             }
                                             
                                             Spacer()
@@ -485,141 +572,185 @@ struct EatsDetailView: View {
     let onBack: () -> Void
     
     var body: some View {
-        VStack {
-            // Header with back button
-            HStack {
-                Button(action: onBack) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                }
-                .foregroundColor(.blue)
+//        VStack {
+//        ScrollView{
+            VStack{
+        
+                    
+                    ChangedDetailsPage(restaurant: restaurant, locationService: locationService, onBack: onBack)
+                        
+//                        HStack {
+//                            Button(action: onBack) {
+//                                HStack {
+//                                    Image(systemName: "chevron.left")
+//                                    Text("Back")
+//                                }
+//                            }
+//                            .foregroundColor(.blue)
+//                            
+//                            Spacer()
+//                        }
+                    
                 
-                Spacer()
             }
-            .padding()
             
+            
+            
+            // Header with back button
+//            ScrollView{
+//                
+//                
+//                ZStack {
+//                    VStack {
+//                        ChangedDetailsPage(restaurant: restaurant, locationService: locationService)
+//                        
+//                        HStack {
+//                            Button(action: onBack) {
+//                                HStack {
+//                                    Image(systemName: "chevron.left")
+//                                    Text("Back")
+//                                }
+//                            }
+//                            .foregroundColor(.blue)
+//                            
+//                            Spacer()
+//                        }
+//                        Spacer()
+//                    }
+//                }
+////                .padding()
+//            }
             // Restaurant content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Restaurant logo and basic info
-                    HStack(alignment: .top, spacing: 12) {
-                        CachedAsyncImage(url: restaurant.logo?.url ?? "") { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 60, height: 60)
-                                .clipShape(Circle())
-                        } placeholder: {
-                            Circle()
-                                .fill(.fill)
-                                .frame(width: 60, height: 60)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(restaurant.name)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
-                            HStack {
-                                Text(locationService.calculateDistance(to: restaurant))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Image(systemName: "location.north.line.fill")
-                                    .foregroundColor(.blue)
-                                    .rotationEffect(.degrees(locationService.calculateBearing(to: restaurant)))
-                            }
-                            
-                            if !restaurant.description.isEmpty {
-                                Text(restaurant.description)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                    
-                    // Cover images
-                    if !restaurant.coverImages.isEmpty {
-                        let config = ImageViewerConfig(height: 200, cornerRadius: 15, spacing: 8)
-                        
-                        ImageViewer(config: config) {
-                            ForEach(restaurant.coverImages, id: \.url) { coverImage in
-                                CachedAsyncImage(url: coverImage.url) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                } placeholder: {
-                                    Rectangle()
-                                        .fill(.gray.opacity(0.4))
-                                        .overlay {
-                                            ProgressView()
-                                                .tint(.blue)
-                                                .scaleEffect(0.7)
-                                        }
-                                }
-                                .containerValue(\.activeViewID, coverImage.url)
-                            }
-                        } overlay: {
-                            OverlayViewEats(activeID: nil, restaurant: restaurant)
-                        } updates: { isPresented, activeID in
-                            // Handle image viewer updates if needed
-                        }
-                    }
-                    
-                    // Additional restaurant details can be added here
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Address details
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: "location")
-                                    .foregroundColor(.blue)
-                                Text("\(restaurant.address.street), \(restaurant.address.city)")
-                                    .font(.body)
-                            }
-                            
-                            Text("\(restaurant.address.state) \(restaurant.address.zipCode), \(restaurant.address.country)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 24)
-                        }
-                        
-                        // Contact details
-                        if !restaurant.contact.phone.isEmpty {
-                            HStack {
-                                Image(systemName: "phone")
-                                    .foregroundColor(.blue)
-                                Text(restaurant.contact.phone)
-                                    .font(.body)
-                            }
-                        }
-                        
-                        if !restaurant.contact.email.isEmpty {
-                            HStack {
-                                Image(systemName: "envelope")
-                                    .foregroundColor(.blue)
-                                Text(restaurant.contact.email)
-                                    .font(.body)
-                            }
-                        }
-                        
-                        if let website = restaurant.contact.website, !website.isEmpty {
-                            HStack {
-                                Image(systemName: "globe")
-                                    .foregroundColor(.blue)
-                                Text(website)
-                                    .font(.body)
-                            }
-                        }
-                    }
-                    .padding(.top)
-                }
-                .padding()
-            }
-        }
+//            ScrollView {
+                
+                
+                
+
+                // MARK: DETAILS PAGE
+//                VStack(alignment: .leading, spacing: 20) {
+//                    // Restaurant logo and basic info
+//                    HStack(alignment: .top, spacing: 12) {
+//                        CachedAsyncImage(url: restaurant.logo?.url ?? "") { image in
+//                            image
+//                                .resizable()
+//                                .aspectRatio(contentMode: .fill)
+//                                .frame(width: 60, height: 60)
+//                                .clipShape(Circle())
+//                        } placeholder: {
+//                            Circle()
+//                                .fill(.fill)
+//                                .frame(width: 60, height: 60)
+//                        }
+//                        
+//                        VStack(alignment: .leading, spacing: 8) {
+//                            Text(restaurant.name)
+//                                .font(.title2)
+//                                .fontWeight(.bold)
+//                            
+//                            HStack {
+//                                Text(locationService.calculateDistance(to: restaurant))
+//                                    .font(.subheadline)
+//                                    .foregroundColor(.secondary)
+//                                
+//                                Image(systemName: "location.north.line.fill")
+//                                    .foregroundColor(.blue)
+//                                    .rotationEffect(.degrees(locationService.calculateBearing(to: restaurant)))
+//                            }
+//                            
+//                            if !restaurant.description.isEmpty {
+//                                Text(restaurant.description)
+//                                    .font(.body)
+//                                    .foregroundColor(.secondary)
+//                            }
+//                        }
+//                        
+//                        Spacer()
+//                    }
+//                    
+//                    // Cover images
+//                    if !restaurant.coverImages.isEmpty {
+//                        let config = ImageViewerConfig(height: 200, cornerRadius: 15, spacing: 8)
+//                        
+//                        ImageViewer(config: config) {
+//                            ForEach(restaurant.coverImages, id: \.url) { coverImage in
+//                                CachedAsyncImage(url: coverImage.url) { image in
+//                                    image
+//                                        .resizable()
+//                                        .aspectRatio(contentMode: .fill)
+//                                } placeholder: {
+//                                    Rectangle()
+//                                        .fill(.gray.opacity(0.4))
+//                                        .overlay {
+//                                            ProgressView()
+//                                                .tint(.blue)
+//                                                .scaleEffect(0.7)
+//                                        }
+//                                }
+//                                .containerValue(\.activeViewID, coverImage.url)
+//                            }
+//                        } overlay: {
+//                            OverlayViewEats(activeID: nil, restaurant: restaurant)
+//                        } updates: { isPresented, activeID in
+//                            // Handle image viewer updates if needed
+//                        }
+//                    }
+//                    
+//                    // Additional restaurant details can be added here
+//                    
+//
+//
+//                    
+//                    
+//                    VStack(alignment: .leading, spacing: 12) {
+//                        // Address details
+//                        VStack(alignment: .leading, spacing: 4) {
+//                            HStack {
+//                                Image(systemName: "location")
+//                                    .foregroundColor(.blue)
+//                                Text("\(restaurant.address.street), \(restaurant.address.city)")
+//                                    .font(.body)
+//                            }
+//                            
+//                            Text("\(restaurant.address.state) \(restaurant.address.zipCode), \(restaurant.address.country)")
+//                                .font(.caption)
+//                                .foregroundColor(.secondary)
+//                                .padding(.leading, 24)
+//                        }
+//                        
+//                        // Contact details
+//                        if !restaurant.contact.phone.isEmpty {
+//                            HStack {
+//                                Image(systemName: "phone")
+//                                    .foregroundColor(.blue)
+//                                Text(restaurant.contact.phone)
+//                                    .font(.body)
+//                            }
+//                        }
+//                        
+//                        if !restaurant.contact.email.isEmpty {
+//                            HStack {
+//                                Image(systemName: "envelope")
+//                                    .foregroundColor(.blue)
+//                                Text(restaurant.contact.email)
+//                                    .font(.body)
+//                            }
+//                        }
+//                        
+//                        if let website = restaurant.contact.website, !website.isEmpty {
+//                            HStack {
+//                                Image(systemName: "globe")
+//                                    .foregroundColor(.blue)
+//                                Text(website)
+//                                    .font(.body)
+//                            }
+//                        }
+//                    }
+//                    .padding(.top)
+//                }
+//                .padding()
+//            }
+//        }
+        .ignoresSafeArea()
         .navigationBarHidden(true)
     }
 }
