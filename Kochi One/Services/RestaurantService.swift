@@ -3,7 +3,7 @@ internal import Combine
 
 class RestaurantService: ObservableObject {
     private let baseURL = "https://codecastle.store/api"
-    private var cancellables = Set<AnyCancellable>()
+    var cancellables = Set<AnyCancellable>()
     
     @Published var restaurants: [Restaurant] = []
     @Published var isLoading = false

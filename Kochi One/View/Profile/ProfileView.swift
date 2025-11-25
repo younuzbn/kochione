@@ -63,16 +63,11 @@ struct ProfileView: View {
                 Section("Settings & Actions") {
                     
                     // Favourites Button
-                    Button(action: {
-                        // Action: Navigate to Favourites View
-                    }) {
+                    NavigationLink(destination: FavouritesView()) {
                         HStack {
                             Image(systemName: "heart.fill")
                                 .foregroundColor(.red)
                             Text("My Favourites")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
                         }
                     }
 

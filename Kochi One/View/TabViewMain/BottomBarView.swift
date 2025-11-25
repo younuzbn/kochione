@@ -20,6 +20,7 @@ struct BottomBarView: View {
     @State private var selectedRestaurantName: String?
     @ObservedObject var locationService: LocationService
     @StateObject private var restaurantService = RestaurantService()
+    @EnvironmentObject var deepLinkManager: DeepLinkManager
 //    @StateObject private var searchViewModel = RestaurantSearchViewModel()
     
     // Use an enum to track which sheet to show
@@ -84,13 +85,45 @@ struct BottomBarView: View {
             metroMapState.isMetroTabActive = (activeTab == .transit)
             metroMapState.showMetroStations = (activeTab == .transit)
         }
-        .onChange(of: activeTab) { _, newValue in
+        .onChange(of: activeTab) { oldValue, newValue in
             // Only show restaurants in Eats tab
             showRestaurants = newValue == .eats
             // Update metro map state
             let metroMapState = MetroMapState.shared
             metroMapState.isMetroTabActive = (newValue == .transit)
             metroMapState.showMetroStations = (newValue == .transit)
+            
+            // If switching to Eats tab and there's a pending deep link, process it after a delay
+            if newValue == .eats, let pendingDeepLink = deepLinkManager.pendingDeepLink {
+                print("🔄 Tab switched to Eats, checking for pending deep link: \(pendingDeepLink.description)")
+                // Give the view time to appear
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // Deep link will be processed by EatsViewM's onAppear
+                }
+            }
+        }
+        .onChange(of: deepLinkManager.pendingDeepLink) { oldValue, newValue in
+            // Switch to Eats tab when a restaurant deep link is received
+            print("🔄 BottomBarView: Deep link onChange. New: \(newValue?.description ?? "nil")")
+            if let deepLink = newValue {
+                switch deepLink {
+                case .restaurant:
+                    print("🍽️ Switching to Eats tab for restaurant deep link")
+                    if activeTab != .eats {
+                        activeTab = .eats
+                    }
+                    // Give a moment for tab switch to complete before processing deep link
+                    // The deep link will be processed by EatsViewM when it appears
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        // Ensure deep link is still pending and process it
+                        if case .restaurant = deepLinkManager.pendingDeepLink {
+                            print("⏰ Delayed deep link processing after tab switch")
+                        }
+                    }
+                case .unknown:
+                    break
+                }
+            }
         }
         .interactiveDismissDisabled()
         // Use activeSheet to manage the presentation and content

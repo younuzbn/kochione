@@ -102,7 +102,12 @@ struct EatsViewFull: View {
     @Binding var showDetail: Bool
     let restaurant: Restaurant
     @ObservedObject var locationService: LocationService
+    @ObservedObject private var favouritesManager = FavouritesManager.shared
     @State private var showMapPicker = false
+    @State private var showCallDialog = false
+    @State private var showShareDialog = false
+    @State private var heartScale: CGFloat = 1.0
+    @State private var expandedImageURL: String? = nil
    
     var body: some View {
         /// Remove the NavigationStack here, as IndividualTabView is already in a ScrollView
@@ -168,61 +173,108 @@ struct EatsViewFull: View {
                     
 
                     
-                    let config = ImageViewerConfig(height: 100, cornerRadius: 10, spacing: 5)
-                    
-                    ImageViewer(config: config) {
-                        ForEach(restaurant.coverImages.prefix(4), id: \.url) { coverImage in
-                            CachedAsyncImage(url: coverImage.url) { image in
-                                image
-                                    .resizable()
-                            } placeholder: {
-                                Rectangle()
-                                    .fill(.gray.opacity(0.4))
-                                    .overlay {
-                                        ProgressView()
-                                            .tint(.blue)
-                                            .scaleEffect(0.7)
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    }
-                            }
-                            .containerValue(\.activeViewID, coverImage.url)
+                    // Image viewer with expandable images
+                    if let expandedURL = expandedImageURL {
+                        // Show expanded image - height of two rows (2 × 100px + 5px spacing = 205px)
+                        CachedAsyncImage(url: expandedURL) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Rectangle()
+                                .fill(.gray.opacity(0.4))
+                                .overlay {
+                                    ProgressView()
+                                        .tint(.blue)
+                                        .scaleEffect(0.7)
+                                }
                         }
-                    } overlay: {
-                        OverlayViewEats(activeID: activeID, restaurant: restaurant)
-                    } updates: { isPresented, activeID in
-                        self.activeID = activeID?.base as? String
+                        .frame(height: 205) // 2 rows × 100px + 5px spacing
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                expandedImageURL = nil
+                            }
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                    } else {
+                        // Show all 4 images in grid
+                        let config = ImageViewerConfig(height: 100, cornerRadius: 10, spacing: 5)
+                        let coverImagesArray = Array(restaurant.coverImages.prefix(4))
+                        
+                        ImageViewer(config: config) {
+                            ForEach(0..<coverImagesArray.count, id: \.self) { index in
+                                let coverImage = coverImagesArray[index]
+                                Button {
+                                    // Directly use the index to get the correct image URL
+                                    let tappedURL = coverImagesArray[index].url
+                                    print("Tapped image at index \(index): \(tappedURL)")
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        expandedImageURL = tappedURL
+                                    }
+                                } label: {
+                                    CachedAsyncImage(url: coverImage.url) { image in
+                                        image
+                                            .resizable()
+                                    } placeholder: {
+                                        Rectangle()
+                                            .fill(.gray.opacity(0.4))
+                                            .overlay {
+                                                ProgressView()
+                                                    .tint(.blue)
+                                                    .scaleEffect(0.7)
+                                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                            }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .containerValue(\.activeViewID, coverImage.url)
+                            }
+                        } overlay: {
+                            OverlayViewEats(activeID: activeID, restaurant: restaurant)
+                        } updates: { isPresented, activeID in
+                            self.activeID = activeID?.base as? String
+                        }
                     }
                     
                     HStack {
                                             // 1. Call Button
                                             Button {
                                                 print("Call button tapped")
-                                                // Action: Make a phone call to the restaurant
-                                                let phoneNumber = restaurant.contact.phone
-                                                guard !phoneNumber.isEmpty else {
-                                                    print("Phone number is empty")
-                                                    return
-                                                }
-                                                
-                                                // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
-                                                let cleanedNumber = phoneNumber
-                                                    .replacingOccurrences(of: " ", with: "")
-                                                    .replacingOccurrences(of: "-", with: "")
-                                                    .replacingOccurrences(of: "(", with: "")
-                                                    .replacingOccurrences(of: ")", with: "")
-                                                    .replacingOccurrences(of: ".", with: "")
-                                                
-                                                if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
-                                                    if UIApplication.shared.canOpenURL(phoneURL) {
-                                                        UIApplication.shared.open(phoneURL)
-                                                    } else {
-                                                        print("Cannot open phone URL: \(phoneURL)")
-                                                    }
-                                                } else {
-                                                    print("Invalid phone number format: \(cleanedNumber)")
-                                                }
+                                                showCallDialog = true
                                             } label: {
                                                 Image(systemName: "phone")
+                                            }
+                                            .confirmationDialog("Call \(restaurant.name)?", isPresented: $showCallDialog, titleVisibility: .visible) {
+                                                Button("Call") {
+                                                    // Action: Make a phone call to the restaurant
+                                                    let phoneNumber = restaurant.contact.phone
+                                                    guard !phoneNumber.isEmpty else {
+                                                        print("Phone number is empty")
+                                                        return
+                                                    }
+                                                    
+                                                    // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
+                                                    let cleanedNumber = phoneNumber
+                                                        .replacingOccurrences(of: " ", with: "")
+                                                        .replacingOccurrences(of: "-", with: "")
+                                                        .replacingOccurrences(of: "(", with: "")
+                                                        .replacingOccurrences(of: ")", with: "")
+                                                        .replacingOccurrences(of: ".", with: "")
+                                                    
+                                                    if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                                                        if UIApplication.shared.canOpenURL(phoneURL) {
+                                                            UIApplication.shared.open(phoneURL)
+                                                        } else {
+                                                            print("Cannot open phone URL: \(phoneURL)")
+                                                        }
+                                                    } else {
+                                                        print("Invalid phone number format: \(cleanedNumber)")
+                                                    }
+                                                }
+                                                Button("Cancel", role: .cancel) { }
+                                            } message: {
+                                                Text(restaurant.contact.phone.isEmpty ? "No phone number available" : restaurant.contact.phone)
                                             }
                                             
                                             Spacer()
@@ -259,10 +311,24 @@ struct EatsViewFull: View {
                                             
                                             // 3. Like/Heart Button
                                             Button {
-                                                print("Like button tapped")
-                                                // Action: Toggle the liked state for this post
+                                                // Toggle favourite with animation
+                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                                    heartScale = 1.3
+                                                }
+                                                
+                                                // Toggle favourite
+                                                favouritesManager.toggleFavourite(restaurantID: restaurant.id)
+                                                
+                                                // Reset scale after animation
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                                        heartScale = 1.0
+                                                    }
+                                                }
                                             } label: {
-                                                Image(systemName: "suit.heart")
+                                                Image(systemName: favouritesManager.isFavourite(restaurantID: restaurant.id) ? "suit.heart.fill" : "suit.heart")
+                                                    .foregroundColor(favouritesManager.isFavourite(restaurantID: restaurant.id) ? .red : .primary)
+                                                    .scaleEffect(heartScale)
                                             }
 
                                             Spacer()
@@ -270,9 +336,32 @@ struct EatsViewFull: View {
                                             // 4. Share Button
                                             Button {
                                                 print("Share button tapped")
-                                                // Action: Show a native share sheet
+                                                showShareDialog = true
                                             } label: {
                                                 Image(systemName: "square.and.arrow.up")
+                                            }
+                                            .confirmationDialog("", isPresented: $showShareDialog, titleVisibility: .hidden) {
+                                                Button("Share") {
+                                                    // Action: Show a native share sheet
+                                                    shareRestaurant()
+                                                }
+                                                
+                                                Button("Report") {
+                                                    // Action: Report the restaurant
+                                                    print("Report restaurant: \(restaurant.name)")
+                                                }
+                                                
+                                                if let website = restaurant.contact.website, !website.isEmpty {
+                                                    Button("View Menu") {
+                                                        // Action: Open restaurant menu/website
+                                                        let urlString = website.hasPrefix("http") ? website : "https://\(website)"
+                                                        if let url = URL(string: urlString) {
+                                                            UIApplication.shared.open(url)
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                Button("Cancel", role: .cancel) { }
                                             }
                                         }
                                         .foregroundStyle(.primary.secondary)
@@ -286,17 +375,54 @@ struct EatsViewFull: View {
         }
         .contentShape(Rectangle()) // Makes the whole post area tappable
     }
+    
+    // Share restaurant function with deep link
+    private func shareRestaurant() {
+        // Create deep link URL with properly encoded restaurant biz_id
+        let encodedBizId = restaurant.bizId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? restaurant.bizId
+        let deepLinkURL = "kochione://restaurant?biz_id=\(encodedBizId)"
+        let shareText = "Check out \(restaurant.name)!\n\n\(restaurant.description)\n\nLocation: \(restaurant.address.street), \(restaurant.address.city)\n\n\(deepLinkURL)"
+        
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController,
+              let url = URL(string: deepLinkURL) else {
+            return
+        }
+        
+        let activityViewController = UIActivityViewController(
+            activityItems: [shareText, url],
+            applicationActivities: nil
+        )
+        
+        // For iPad support
+        if let popover = activityViewController.popoverPresentationController {
+            popover.sourceView = rootViewController.view
+            popover.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        
+        // Find the topmost view controller
+        var topController = rootViewController
+        while let presented = topController.presentedViewController {
+            topController = presented
+        }
+        
+        topController.present(activityViewController, animated: true)
+    }
 }
 
 // --- NEW Wrapper View to display multiple posts ---
 struct EatsViewM: View {
     @ObservedObject var restaurantService: RestaurantService
     @ObservedObject var locationService: LocationService
+    @EnvironmentObject var deepLinkManager: DeepLinkManager
     @State private var showDetail = false
     @State private var selectedRestaurant: Restaurant?
     @Binding var selectedRestaurantName: String?
     @State private var selectedCategory: String = "All"
     @StateObject private var eatsMapState = EatsMapState.shared
+    @State private var pendingRestaurantID: String? = nil
     
     // Hardcoded categories - always available even if API fails
     let availableCategories: [String] = [
@@ -309,6 +435,7 @@ struct EatsViewM: View {
         "Bakeries & Desserts",
         "Buffet & Fine Dining"
     ]
+    
     
     // Filter restaurants based on selected category using API restaurantType
     // Use @State to hold filtered results - updated via onChange to prevent recomputation on every view update
@@ -439,6 +566,15 @@ struct EatsViewM: View {
             updateFilteredRestaurants()
             // Sync initial category with map state
             eatsMapState.selectedCategory = selectedCategory
+            
+            // Check for pending deep link when view appears
+            // Use a small delay to ensure the view is fully ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let pendingDeepLink = deepLinkManager.pendingDeepLink {
+                    print("🔍 Found pending deep link on appear: \(pendingDeepLink.description)")
+                    handleDeepLink(pendingDeepLink)
+                }
+            }
         }
         .onChange(of: selectedCategory) { oldValue, newValue in
             // Recompute when category changes
@@ -450,12 +586,31 @@ struct EatsViewM: View {
             // Recompute when restaurants change
             if newValue != oldValue {
                 updateFilteredRestaurants()
+                // Check if there's a pending deep link restaurant ID when restaurants are loaded
+                if let pendingID = pendingRestaurantID, !restaurantService.restaurants.isEmpty {
+                    navigateToRestaurant(id: pendingID)
+                    pendingRestaurantID = nil
+                }
             }
         }
         .onChange(of: restaurantService.isLoading) { oldValue, newValue in
             // Recompute when loading completes
             if !newValue && oldValue {
                 updateFilteredRestaurants()
+                // Check if there's a pending deep link restaurant ID
+                if let pendingID = pendingRestaurantID {
+                    navigateToRestaurant(id: pendingID)
+                    pendingRestaurantID = nil
+                }
+            }
+        }
+        .onChange(of: deepLinkManager.pendingDeepLink) { oldValue, newValue in
+            // Handle deep link
+            print("🔄 Deep link onChange triggered. Old: \(oldValue?.description ?? "nil"), New: \(newValue?.description ?? "nil")")
+            if let deepLink = newValue {
+                print("📱 Processing deep link: \(deepLink)")
+                handleDeepLink(deepLink)
+                // Don't clear immediately - let it be cleared after navigation succeeds
             }
         }
         .alert("Error", isPresented: .constant(restaurantService.errorMessage != nil)) {
@@ -474,6 +629,81 @@ struct EatsViewM: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Please enable location access in Settings to see distances to restaurants.")
+        }
+    }
+    
+    // Handle deep link
+    private func handleDeepLink(_ deepLink: DeepLinkType) {
+        switch deepLink {
+        case .restaurant(let id):
+            navigateToRestaurant(id: id)
+        case .unknown:
+            break
+        }
+    }
+    
+    // Navigate to restaurant by ID
+    private func navigateToRestaurant(id: String) {
+        print("🔗 Navigating to restaurant with ID: \(id)")
+        print("📊 Current restaurants count: \(restaurantService.restaurants.count)")
+        print("📊 Is loading: \(restaurantService.isLoading)")
+        
+        // Try to find restaurant immediately
+        if let restaurant = restaurantService.restaurants.first(where: { $0.id == id }) {
+            print("✅ Found restaurant: \(restaurant.name)")
+            selectedRestaurant = restaurant
+            selectedRestaurantName = restaurant.name
+            showDetail = true
+            // Clear pending deep link after successful navigation
+            deepLinkManager.pendingDeepLink = nil
+            pendingRestaurantID = nil
+        } else {
+            print("⏳ Restaurant not found yet, storing ID: \(id)")
+            print("📋 Available restaurant IDs: \(restaurantService.restaurants.map { $0.id }.prefix(5))")
+            // Restaurant not found - store the ID and wait for restaurants to load
+            pendingRestaurantID = id
+            
+            // If restaurants are empty and not loading, fetch them
+            if restaurantService.restaurants.isEmpty && !restaurantService.isLoading {
+                print("📥 Fetching restaurants...")
+                restaurantService.fetchRestaurants()
+            }
+            
+            // Also check periodically in case restaurants are already loading
+            checkForRestaurantPeriodically(id: id)
+        }
+    }
+    
+    // Periodically check for restaurant until found or timeout
+    private func checkForRestaurantPeriodically(id: String, attempts: Int = 0, maxAttempts: Int = 10) {
+        guard attempts < maxAttempts else {
+            print("Failed to find restaurant with ID: \(id) after \(maxAttempts) attempts")
+            pendingRestaurantID = nil
+            return
+        }
+        
+        if let restaurant = restaurantService.restaurants.first(where: { $0.id == id }) {
+            print("✅ Found restaurant in periodic check: \(restaurant.name)")
+            selectedRestaurant = restaurant
+            selectedRestaurantName = restaurant.name
+            showDetail = true
+            pendingRestaurantID = nil
+            // Clear pending deep link after successful navigation
+            deepLinkManager.pendingDeepLink = nil
+        } else if !restaurantService.isLoading && restaurantService.restaurants.isEmpty {
+            // Still loading, check again
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                checkForRestaurantPeriodically(id: id, attempts: attempts + 1, maxAttempts: maxAttempts)
+            }
+        } else if !restaurantService.isLoading {
+            // Loading complete but restaurant not found
+            print("Restaurant with ID \(id) not found in loaded restaurants")
+            pendingRestaurantID = nil
+        } else {
+            // Still loading, check again
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                checkForRestaurantPeriodically(id: id, attempts: attempts + 1, maxAttempts: maxAttempts)
+            }
         }
     }
 }

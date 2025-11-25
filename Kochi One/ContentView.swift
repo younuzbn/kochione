@@ -22,6 +22,7 @@ struct ContentView: View {
     @StateObject private var metroMapState = MetroMapState.shared
     @StateObject private var metroService = MetroDataService.shared
     @StateObject private var eatsMapState = EatsMapState.shared
+    @EnvironmentObject var deepLinkManager: DeepLinkManager
     @State private var showRestaurants: Bool = true
     private let routeUpdateTimer = Timer.publish(every: 5.0, on: .main, in: .common).autoconnect()
     
