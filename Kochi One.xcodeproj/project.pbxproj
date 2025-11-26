@@ -10,9 +10,22 @@
 		18D597792E8C7B9D00DB7989 /* Kochi One.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Kochi One.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E5C823412ED725EB00915292 /* Exceptions for "Kochi One" folder in "Kochi One" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				View/CustomCarousel.swift,
+			);
+			target = 18D597782E8C7B9D00DB7989 /* Kochi One */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		18D5977B2E8C7B9D00DB7989 /* Kochi One */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E5C823412ED725EB00915292 /* Exceptions for "Kochi One" folder in "Kochi One" target */,
+			);
 			path = "Kochi One";
 			sourceTree = "<group>";
 		};

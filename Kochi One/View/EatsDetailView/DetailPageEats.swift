@@ -24,6 +24,7 @@ struct DetailPageEats: View {
     }
     
     var body: some View {
+        NavigationStack{
         let days: [(String, DayHours)] = [
             ("Monday", operatingHours.monday),
             ("Tuesday", operatingHours.tuesday),
@@ -54,8 +55,45 @@ struct DetailPageEats: View {
                     RatingSection(rating: restaurant.rating, ranking: restaurant.ranking)
                     
                     // Cuisine Section
-                    CuisineSection(cuisines: restaurant.cuisine, website: restaurant.contact.website)
                     
+                    if !restaurant.cuisine.isEmpty {
+                        HStack {
+                            Text("Cuisine")
+                                .font(.system(size: 20, weight: .semibold))
+                            
+                            Spacer()
+                            
+                            // Menu Button
+                            
+                            NavigationLink {
+                                Home()
+                                
+                                
+                            } label: {
+                                HStack(spacing: 6) {
+                                    //                                        Image(systemName: "book.fill")
+                                    //                                            .font(.system(size: 14, weight: .medium))
+                                    Text("Menu")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.blue.opacity(0.1))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            
+                        }
+                        .padding(.horizontal,30)
+                        
+                        CuisineSection(cuisines: restaurant.cuisine, website: restaurant.contact.website)
+                    }
                     // Features Section
                     FeaturesSection(features: restaurant.features)
                     
@@ -150,6 +188,7 @@ struct DetailPageEats: View {
             )
         }
         .ignoresSafeArea(edges: .bottom)
+    }
     }
     
     
