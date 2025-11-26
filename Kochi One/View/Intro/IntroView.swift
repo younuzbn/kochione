@@ -145,7 +145,7 @@ struct IntroView: View {
                 print("(1)Intro completed. Flag saved: \(hasSeenIntro)")
                 hasSeenIntro = true
                 print("Intro completed. Flag saved: \(hasSeenIntro)")
-                navigateToHome = true
+//                navigateToHome = true
             } else {
                 activePage = activePage.nextPage
             }

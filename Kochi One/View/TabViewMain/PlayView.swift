@@ -8,7 +8,10 @@
 import SwiftUI
 
 struct PlayView: View {
+
     @State private var cornerRadius: CGFloat = 15 // Use the corner radius from PlayView
+    @State private var showPlayStation = false
+
     
     var body: some View {
         // Box 1 (The Big Box) - Full Screen Container
@@ -19,7 +22,7 @@ struct PlayView: View {
                 
                 // Box 4 (Top-left button - 50% width)
                 // Contains the Soccer Content
-                Button(action: { print("Tapped Soccer (Box 4)") }) {
+                Button(action: {  }) {
                     VStack { // Original Soccer VStack (Now Box 4)
                         VStack {
                             HStack {
@@ -147,7 +150,7 @@ struct PlayView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity) // Box 2 container
             
             // --- BOX 3 (Bottom 50% height) - Contains Playstation Centre ---
-            Button(action: { print("Tapped Playstation Centre (Box 3)") }) {
+            Button(action: { showPlayStation = true }) {
                 VStack {
                     HStack {
                         VStack(alignment: .leading, spacing: 8) {
@@ -268,12 +271,19 @@ struct PlayView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity) // Same height as Playstation button
             
         }
+        .fullScreenCover(isPresented: $showPlayStation) {
+            GameStation(onBack: {
+                showPlayStation = false   // close the fullscreen view
+            })
+        }
+
         .padding() // Add padding around the entire grid to match your PlayView
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.all, edges: .all) // Ensure it fills the screen
     }
+
 }
 
-#Preview {
-    PlayView()
-}
+//#Preview {
+//    PlayView()
+//}

@@ -420,20 +420,20 @@ struct EatsViewM: View {
     @State private var showDetail = false
     @State private var selectedRestaurant: Restaurant?
     @Binding var selectedRestaurantName: String?
-    @State private var selectedCategory: String = "All"
+    @State private var selectedCategory: String = "Trending"
     @StateObject private var eatsMapState = EatsMapState.shared
     @State private var pendingRestaurantID: String? = nil
     
     // Hardcoded categories - always available even if API fails
     let availableCategories: [String] = [
-        "All",
+        "Trending",
         "Restaurants",
         "Cafes",
+        "Buffet & Fine Dining",
         "Pubs & Bars",
         "Juice & Shake",
         "Food Truck",
-        "Bakeries & Desserts",
-        "Buffet & Fine Dining"
+        "Bakeries & Desserts"
     ]
     
     
@@ -445,9 +445,9 @@ struct EatsViewM: View {
         // Filter active restaurants first (most efficient)
         let activeRestaurants = restaurantService.restaurants.filter { $0.isActive }
         
-        // If "All" selected, return all active restaurants
-        guard selectedCategory != "All" else {
-            return activeRestaurants
+        // If "Trending" selected, return all active restaurants sorted by ranking (ascending - lower is better)
+        guard selectedCategory != "Trending" else {
+            return activeRestaurants.sorted { $0.ranking < $1.ranking }
         }
         
         let categoryLower = selectedCategory.lowercased()
@@ -713,146 +713,15 @@ struct EatsDetailView: View {
     let restaurant: Restaurant
     @ObservedObject var locationService: LocationService
     let onBack: () -> Void
-    
     var body: some View {
         VStack {
-            // Header with back button
-            HStack {
-                Button(action: onBack) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                }
-                .foregroundColor(.blue)
-                
-                Spacer()
-            }
-            .padding()
-            
-            // Restaurant content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Restaurant logo and basic info
-                    HStack(alignment: .top, spacing: 12) {
-                        CachedAsyncImage(url: restaurant.logo?.url ?? "") { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 60, height: 60)
-                                .clipShape(Circle())
-                        } placeholder: {
-                            Circle()
-                                .fill(.fill)
-                                .frame(width: 60, height: 60)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(restaurant.name)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
-                            HStack {
-                                Text(locationService.calculateDistance(to: restaurant))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Image(systemName: "location.north.line.fill")
-                                    .foregroundColor(.blue)
-                                    .rotationEffect(.degrees(locationService.calculateBearing(to: restaurant)))
-                            }
-                            
-                            if !restaurant.description.isEmpty {
-                                Text(restaurant.description)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                    
-                    // Cover images
-                    if !restaurant.coverImages.isEmpty {
-                        let config = ImageViewerConfig(height: 200, cornerRadius: 15, spacing: 8)
-                        
-                        ImageViewer(config: config) {
-                            ForEach(restaurant.coverImages, id: \.url) { coverImage in
-                                CachedAsyncImage(url: coverImage.url) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                } placeholder: {
-                                    Rectangle()
-                                        .fill(.gray.opacity(0.4))
-                                        .overlay {
-                                            ProgressView()
-                                                .tint(.blue)
-                                                .scaleEffect(0.7)
-                                        }
-                                }
-                                .containerValue(\.activeViewID, coverImage.url)
-                            }
-                        } overlay: {
-                            OverlayViewEats(activeID: nil, restaurant: restaurant)
-                        } updates: { isPresented, activeID in
-                            // Handle image viewer updates if needed
-                        }
-                    }
-                    
-                    // Additional restaurant details can be added here
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Address details
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: "location")
-                                    .foregroundColor(.blue)
-                                Text("\(restaurant.address.street), \(restaurant.address.city)")
-                                    .font(.body)
-                            }
-                            
-                            Text("\(restaurant.address.state) \(restaurant.address.zipCode), \(restaurant.address.country)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 24)
-                        }
-                        
-                        // Contact details
-                        if !restaurant.contact.phone.isEmpty {
-                            HStack {
-                                Image(systemName: "phone")
-                                    .foregroundColor(.blue)
-                                Text(restaurant.contact.phone)
-                                    .font(.body)
-                            }
-                        }
-                        
-                        if !restaurant.contact.email.isEmpty {
-                            HStack {
-                                Image(systemName: "envelope")
-                                    .foregroundColor(.blue)
-                                Text(restaurant.contact.email)
-                                    .font(.body)
-                            }
-                        }
-                        
-                        if let website = restaurant.contact.website, !website.isEmpty {
-                            HStack {
-                                Image(systemName: "globe")
-                                    .foregroundColor(.blue)
-                                Text(website)
-                                    .font(.body)
-                            }
-                        }
-                    }
-                    .padding(.top)
-                }
-                .padding()
-            }
+            DetailPageEats(restaurant: restaurant, locationService: locationService, onBack: onBack)
         }
+        .ignoresSafeArea()
         .navigationBarHidden(true)
     }
 }
+
 
 
 /// Overlay View
@@ -893,12 +762,12 @@ struct CustomCategoryControl: View {
     @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
     
-    // Get icon for each category
-    private func icon(for option: String) -> String {
+    // Get icon for each category (returns SF symbol name or nil for asset images)
+    private func icon(for option: String) -> String? {
         let lowercased = option.lowercased()
         switch lowercased {
-        case "all":
-            return "square.grid.2x2.fill"
+        case "trending":
+            return "sparkles" // Use the SF symbol that was for buffet & fine dining
         case "restaurants":
             return "fork.knife"
         case "cafes":
@@ -912,10 +781,15 @@ struct CustomCategoryControl: View {
         case "bakeries & desserts":
             return "birthday.cake.fill"
         case "buffet & fine dining":
-            return "sparkles"
+            return nil // Use asset image instead
         default:
             return "circle.fill"
         }
+    }
+    
+    // Check if category uses asset image
+    private func usesAssetImage(for option: String) -> Bool {
+        return option.lowercased() == "buffet & fine dining"
     }
     
     var body: some View {
@@ -938,9 +812,18 @@ struct CustomCategoryControl: View {
                             
                             // Content: Icon + Text for selected, Icon only for unselected
                             HStack(spacing: 6) {
-                                Image(systemName: icon(for: option))
-                                    .font(.system(size: 16, weight: selection == option ? .semibold : .medium))
-                                    .foregroundStyle(selection == option ? (colorScheme == .dark ? .black : .white) : .primary)
+                                if usesAssetImage(for: option) {
+                                    // Use asset image for buffet & fine dining
+                                    Image("finedining")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 20, height: 20)
+                                } else if let iconName = icon(for: option) {
+                                    // Use SF symbol
+                                    Image(systemName: iconName)
+                                        .font(.system(size: 16, weight: selection == option ? .semibold : .medium))
+                                        .foregroundStyle(selection == option ? (colorScheme == .dark ? .black : .white) : .primary)
+                                }
                                 
                                 if selection == option {
                                     Text(option)
