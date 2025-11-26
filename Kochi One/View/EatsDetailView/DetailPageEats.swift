@@ -47,18 +47,14 @@ struct DetailPageEats: View {
                         restaurant: restaurant,
                         distance: distance,
                         todayData: todayData,
-                        convertTo12Hour: TimeHelper.convertTo12Hour,
-                        showCallDialog: $showCallDialog,
-                        showMapPicker: $showMapPicker,
-                        showEmailDialog: $showEmailDialog,
-                        showWebsiteDialog: $showWebsiteDialog
+                        convertTo12Hour: TimeHelper.convertTo12Hour
                     )
                     
                     // Rating & Ranking Section
                     RatingSection(rating: restaurant.rating, ranking: restaurant.ranking)
                     
                     // Cuisine Section
-                    CuisineSection(cuisines: restaurant.cuisine)
+                    CuisineSection(cuisines: restaurant.cuisine, website: restaurant.contact.website)
                     
                     // Features Section
                     FeaturesSection(features: restaurant.features)
@@ -80,7 +76,61 @@ struct DetailPageEats: View {
                         .padding(.top, 10)
                     }
                     .padding(.horizontal, 30)
-                    .padding(.bottom, 100) // Extra padding for floating buttons
+                    
+                    // Website and Email Section at the bottom
+                    VStack(spacing: 12) {
+                        // Visit Website Button
+                        if let website = restaurant.contact.website, !website.isEmpty {
+                            Button {
+                                let urlString = website.hasPrefix("http") ? website : "https://\(website)"
+                                if let url = URL(string: urlString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "safari")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Visit Website")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue)
+                                )
+                            }
+                        }
+                        
+                        // Email Button
+                        if !restaurant.contact.email.isEmpty {
+                            Button {
+                                if let emailURL = URL(string: "mailto:\(restaurant.contact.email)") {
+                                    if UIApplication.shared.canOpenURL(emailURL) {
+                                        UIApplication.shared.open(emailURL)
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "envelope.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Email")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.top, 20)
+                    .padding(.bottom, 120) // Extra padding for floating buttons
                 }
             }
             .ignoresSafeArea(edges: .top)
@@ -94,7 +144,9 @@ struct DetailPageEats: View {
                 heartScale: $heartScale,
                 shareRestaurant: {
                     ShareHelper.shareRestaurant(restaurant)
-                }
+                },
+                showCallDialog: $showCallDialog,
+                showMapPicker: $showMapPicker
             )
         }
         .ignoresSafeArea(edges: .bottom)

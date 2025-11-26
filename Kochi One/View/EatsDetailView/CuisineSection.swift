@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CuisineSection: View {
     let cuisines: [String]
+    let website: String?
     
     var body: some View {
         if !cuisines.isEmpty {
@@ -20,9 +21,41 @@ struct CuisineSection: View {
 //                    .padding(.horizontal, 30)
                 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Cuisine")
-                        .font(.system(size: 20, weight: .semibold))
-                        .padding(.horizontal, 30)
+                    HStack {
+                        Text("Cuisine")
+                            .font(.system(size: 20, weight: .semibold))
+                        
+                        Spacer()
+                        
+                        // Menu Button
+                        if let website = website, !website.isEmpty {
+                            Button {
+                                let urlString = website.hasPrefix("http") ? website : "https://\(website)"
+                                if let url = URL(string: urlString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "book.fill")
+                                        .font(.system(size: 14, weight: .medium))
+                                    Text("Menu")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.blue.opacity(0.1))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 30)
                     
                     // Cuisine tags - horizontal scrollable
                     ScrollView(.horizontal, showsIndicators: false) {

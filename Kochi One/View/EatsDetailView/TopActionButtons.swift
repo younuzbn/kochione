@@ -14,22 +14,19 @@ struct BottomActionButtons: View {
     @Binding var showShareDialog: Bool
     @Binding var heartScale: CGFloat
     let shareRestaurant: () -> Void
+    @Binding var showCallDialog: Bool
+    @Binding var showMapPicker: Bool
     
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 12) {
             //MARK: BACK BTN
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
                     .foregroundStyle(Color.primary)
-                    .font(.system(size: 20, weight: .semibold))
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                    )
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
             }
-            
-            Spacer()
             
             //MARK: LIKE BTN
             Button {
@@ -50,16 +47,75 @@ struct BottomActionButtons: View {
             } label: {
                 Image(systemName: favouritesManager.isFavourite(restaurantID: restaurant.id) ? "suit.heart.fill" : "suit.heart")
                     .foregroundStyle(favouritesManager.isFavourite(restaurantID: restaurant.id) ? Color.red : Color.primary)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .scaleEffect(heartScale)
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
             }
             
-            Spacer()
+            //MARK: CALL BTN
+            Button {
+                showCallDialog = true
+            } label: {
+                Image(systemName: "phone.fill")
+                    .foregroundStyle(Color.primary)
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+            }
+            .confirmationDialog("Call \(restaurant.name)?", isPresented: $showCallDialog, titleVisibility: .visible) {
+                Button("Call") {
+                    let phoneNumber = restaurant.contact.phone
+                    guard !phoneNumber.isEmpty else {
+                        print("Phone number is empty")
+                        return
+                    }
+                    
+                    let cleanedNumber = phoneNumber
+                        .replacingOccurrences(of: " ", with: "")
+                        .replacingOccurrences(of: "-", with: "")
+                        .replacingOccurrences(of: "(", with: "")
+                        .replacingOccurrences(of: ")", with: "")
+                        .replacingOccurrences(of: ".", with: "")
+                    
+                    if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                        if UIApplication.shared.canOpenURL(phoneURL) {
+                            UIApplication.shared.open(phoneURL)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(restaurant.contact.phone.isEmpty ? "No phone number available" : restaurant.contact.phone)
+            }
+            
+            //MARK: NAVIGATION BTN
+            Button {
+                let availableApps = MapApp.availableApps()
+                if availableApps.count == 1, let app = availableApps.first {
+                    if let url = app.navigationURL(latitude: restaurant.location.latitude, longitude: restaurant.location.longitude, businessName: restaurant.name) {
+                        UIApplication.shared.open(url)
+                    }
+                } else {
+                    showMapPicker = true
+                }
+            } label: {
+                Image(systemName: "location.fill")
+                    .foregroundStyle(Color.primary)
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+            }
+            .confirmationDialog("Choose Navigation App", isPresented: $showMapPicker, titleVisibility: .visible) {
+                ForEach(MapApp.availableApps()) { app in
+                    Button(app.rawValue) {
+                        if let url = app.navigationURL(latitude: restaurant.location.latitude, longitude: restaurant.location.longitude, businessName: restaurant.name) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            }
             
             //MARK: SHARE BTN
             Button {
@@ -67,12 +123,9 @@ struct BottomActionButtons: View {
             } label: {
                 Image(systemName: "square.and.arrow.up")
                     .foregroundStyle(Color.primary)
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                    )
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
             }
             .confirmationDialog("", isPresented: $showShareDialog, titleVisibility: .hidden) {
                 Button("Share") {
@@ -95,6 +148,12 @@ struct BottomActionButtons: View {
                 Button("Cancel", role: .cancel) { }
             }
         }
+        .padding(.horizontal, 30)
+        .padding(.vertical, 12)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
         .padding(.horizontal, 30)
         .padding(.bottom, 34)
         .padding(.top, 16)
