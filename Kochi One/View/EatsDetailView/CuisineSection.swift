@@ -11,93 +11,98 @@ struct CuisineSection: View {
     let cuisines: [String]
     let website: String?
     
+    
     var body: some View {
-        if !cuisines.isEmpty {
-            VStack(spacing: 0) {
-//                // Divider line
-//                Rectangle()
-//                    .fill(Color.gray.opacity(0.2))
-//                    .frame(height: 1)
-//                    .padding(.horizontal, 30)
-                
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("Cuisine")
-                            .font(.system(size: 20, weight: .semibold))
-                        
-                        Spacer()
-                        
-                        // Menu Button
-                        if let website = website, !website.isEmpty {
-                            Button {
-                                let urlString = website.hasPrefix("http") ? website : "https://\(website)"
-                                if let url = URL(string: urlString) {
-                                    UIApplication.shared.open(url)
-                                }
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "book.fill")
-                                        .font(.system(size: 14, weight: .medium))
-                                    Text("Menu")
-                                        .font(.system(size: 15, weight: .semibold))
-                                }
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.blue.opacity(0.1))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                                        )
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 30)
+        
+            if !cuisines.isEmpty {
+                VStack(spacing: 0) {
+                    //                // Divider line
+                    //                Rectangle()
+                    //                    .fill(Color.gray.opacity(0.2))
+                    //                    .frame(height: 1)
+                    //                    .padding(.horizontal, 30)
                     
-                    // Cuisine tags - horizontal scrollable
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(cuisines, id: \.self) { cuisine in
-                                HStack(spacing: 6) {
-                                    Image(systemName: "fork.knife")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Text(cuisine)
-                                        .font(.system(size: 15, weight: .regular))
-                                        .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 16) {
+//                        HStack {
+//                            Text("Cuisine")
+//                                .font(.system(size: 20, weight: .semibold))
+//                            
+//                            Spacer()
+//                            
+//                            // Menu Button
+//                            if let website = website, !website.isEmpty {
+//                                Button {
+////                                    let urlString = website.hasPrefix("http") ? website : "https://\(website)"
+////                                    if let url = URL(string: urlString) {
+////                                        UIApplication.shared.open(url)
+////                                    }
+//                                    
+//                                    
+//                                } label: {
+//                                    HStack(spacing: 6) {
+////                                        Image(systemName: "book.fill")
+////                                            .font(.system(size: 14, weight: .medium))
+//                                        Text("Menu")
+//                                            .font(.system(size: 15, weight: .semibold))
+//                                    }
+//                                    .foregroundStyle(.blue)
+//                                    .padding(.horizontal, 16)
+//                                    .padding(.vertical, 10)
+//                                    .background(
+//                                        RoundedRectangle(cornerRadius: 8)
+//                                            .fill(Color.blue.opacity(0.1))
+//                                            .overlay(
+//                                                RoundedRectangle(cornerRadius: 8)
+//                                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+//                                            )
+//                                    )
+//                                }
+//                            }
+//                        }
+//                        .padding(.horizontal, 30)
+                        
+                        // Cuisine tags - horizontal scrollable
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(cuisines, id: \.self) { cuisine in
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "fork.knife")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Text(cuisine)
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundStyle(.primary)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.08))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                                            )
+                                    )
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.gray.opacity(0.08))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                                        )
-                                )
+                                
+                                // Trailing padding
+                                Spacer()
+                                    .frame(width: 30)
                             }
-                            
-                            // Trailing padding
-                            Spacer()
-                                .frame(width: 30)
+                            .padding(.leading, 30)
                         }
-                        .padding(.leading, 30)
                     }
+                    .padding(.vertical, 20)
+                    //
+                    //                // Divider line
+                    //                Rectangle()
+                    //                    .fill(Color.gray.opacity(0.2))
+                    //                    .frame(height: 1)
+                    //                    .padding(.horizontal, 30)
                 }
-                .padding(.vertical, 20)
-//                
-//                // Divider line
-//                Rectangle()
-//                    .fill(Color.gray.opacity(0.2))
-//                    .frame(height: 1)
-//                    .padding(.horizontal, 30)
             }
-        }
+        
     }
 }
 
