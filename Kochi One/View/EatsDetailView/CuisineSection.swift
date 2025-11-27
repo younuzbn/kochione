@@ -90,7 +90,7 @@ struct CuisineSection: View {
                     }
                 }
                 .padding(.vertical, 20)
-//                
+//
 //                // Divider line
 //                Rectangle()
 //                    .fill(Color.gray.opacity(0.2))

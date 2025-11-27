@@ -55,6 +55,7 @@ struct ImageViewer<Content: View, Overlay: View>: View {
                         }
                     }
                     .frame(height: config.height)
+                
                     .frame(maxWidth: .infinity)
                     .contentShape(.rect)
                     .onTapGesture {

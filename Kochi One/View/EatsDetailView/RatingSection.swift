@@ -83,7 +83,7 @@ struct RatingSection: View {
                 .frame(height: 1)
                 .padding(.horizontal, 30)
         }
-        .padding(.vertical, 20)
+//        .padding(.vertical, 20)
     }
 }
 

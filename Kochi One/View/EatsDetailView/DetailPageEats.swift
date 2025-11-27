@@ -55,6 +55,9 @@ struct DetailPageEats: View {
                     
                     // Cuisine Section
                     CuisineSection(cuisines: restaurant.cuisine, website: restaurant.contact.website)
+
+                    
+                    
                     
                     // Features Section
                     FeaturesSection(features: restaurant.features)

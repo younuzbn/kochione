@@ -46,6 +46,7 @@ struct FeaturesSection: View {
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
                     .frame(height: 1)
+
                     .padding(.horizontal, 30)
                 
                 VStack(alignment: .leading, spacing: 16) {
@@ -81,7 +82,7 @@ struct FeaturesSection: View {
                         }
                     }
                 }
-                .padding(.vertical, 20)
+                .padding(.vertical, 30)
                 
                 // Divider line
                 Rectangle()
