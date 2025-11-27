@@ -140,7 +140,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         .cornerRadius(50)
                                         .glassEffect()
                                 } else {
@@ -148,7 +148,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         
                                         .background(.ultraThinMaterial)
                                         .cornerRadius(50)
@@ -166,7 +166,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         .cornerRadius(50)
                                         .glassEffect()
                                 } else {
@@ -174,7 +174,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         
                                         .background(.ultraThinMaterial)
                                         .cornerRadius(50)
