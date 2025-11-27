@@ -183,6 +183,9 @@ struct GallerySection: View {
                         }.padding(10)
                         
                     }
+                    .padding(.leading, 30)
+                    .padding(.top, 15)
+                    .padding(.bottom, 20)
                 } else {
                     
                     HStack(spacing: 10) {
@@ -244,6 +247,7 @@ struct GallerySection: View {
                         Spacer()
                             .frame(width: 30)
                     }
+                    .padding(.leading, 30)
                     .onAppear{
                         print("expandedImageURL")
                     }

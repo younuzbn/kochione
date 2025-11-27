@@ -169,8 +169,8 @@ struct MenuCustomCarousels<Content: View,Item,ID>: View where Item: RandomAccess
     }
 }
 
-struct MenuCustomCarousel_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
+//struct MenuCustomCarousel_Previews: PreviewProvider {
+//    static var previews: some View {
+//        ContentView()
+//    }
+//}

@@ -40,19 +40,36 @@ struct DetailPageEats: View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // Background Image
-                    RestaurantHeaderImage(imageURL: restaurant.coverImages.first?.url)
-                    
-                    // Restaurant Info Content (moved from card)
-                    RestaurantInfoContent(
-                        restaurant: restaurant,
-                        distance: distance,
-                        todayData: todayData,
-                        convertTo12Hour: TimeHelper.convertTo12Hour
-                    )
+                    // Background Image with Overlay Info
+                    ZStack(alignment: .bottomLeading) {
+                        RestaurantHeaderImage(imageURL: restaurant.coverImages.first?.url)
+                        
+                        // Black gradient overlay at bottom
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.clear, Color.black.opacity(0.6)]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 300)
+                        .clipShape(BottomRoundedRectangle(cornerRadius: 20))
+                        .allowsHitTesting(false)
+                        
+                        // Restaurant Info Content overlaid on banner
+                        RestaurantInfoContent(
+                            restaurant: restaurant,
+                            distance: distance,
+                            todayData: todayData,
+                            convertTo12Hour: TimeHelper.convertTo12Hour
+                        )
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 20)
+                    }
                     
                     // Rating & Ranking Section
                     RatingSection(rating: restaurant.rating, ranking: restaurant.ranking)
+                    
+                    // Gallery Section
+                    GallerySection(coverImages: restaurant.coverImages)
                     
                     // Cuisine Section
                     
@@ -71,21 +88,21 @@ struct DetailPageEats: View {
                                 
                             } label: {
                                 HStack(spacing: 6) {
-                                    //                                        Image(systemName: "book.fill")
-                                    //                                            .font(.system(size: 14, weight: .medium))
-                                    Text("Menu")
+                                    Image(systemName: "fork.knife")
+                                        .font(.system(size: 14, weight: .medium))
+                                    Text("View Menu")
                                         .font(.system(size: 15, weight: .semibold))
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .medium))
                                 }
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(.black)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.blue.opacity(0.1))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                                        )
+                                .overlay(
+                                    Rectangle()
+                                        .frame(height: 1)
+                                        .foregroundStyle(.black),
+                                    alignment: .bottom
                                 )
                             }
                             
@@ -94,25 +111,59 @@ struct DetailPageEats: View {
                         
                         CuisineSection(cuisines: restaurant.cuisine, website: restaurant.contact.website)
                     }
+                    
+                    // Updates Section
+                    UpdatesSection(updates: {
+                        var updates: [UpdateItem] = []
+                        let allImages = restaurant.coverImages.compactMap { $0.url }
+                        
+                        if !allImages.isEmpty {
+                            // First update with first 3 images
+                            let firstImages = Array(allImages.prefix(3))
+                            updates.append(UpdateItem(
+                                id: "1",
+                                title: "New Menu Items Available",
+                                description: "We've added exciting new dishes to our menu. Try our chef's special recommendations and experience the latest culinary innovations.",
+                                images: firstImages
+                            ))
+                            
+                            // Second update with next 3 images (if available)
+                            if allImages.count > 3 {
+                                let secondImages = Array(allImages.dropFirst(3).prefix(3))
+                                updates.append(UpdateItem(
+                                    id: "2",
+                                    title: "Weekend Special Offer",
+                                    description: "Join us this weekend for special discounts on selected items. Don't miss out on our limited-time offers and seasonal favorites.",
+                                    images: secondImages
+                                ))
+                            }
+                        } else {
+                            // Fallback updates with no images
+                            updates.append(UpdateItem(
+                                id: "1",
+                                title: "New Menu Items Available",
+                                description: "We've added exciting new dishes to our menu. Try our chef's special recommendations and experience the latest culinary innovations.",
+                                images: []
+                            ))
+                        }
+                        
+                        return updates
+                    }())
+                    
                     // Features Section
                     FeaturesSection(features: restaurant.features)
                     
-                    // Gallery Section
-                    VStack {
-                        GallerySection(coverImages: restaurant.coverImages)
+                    // Operating Hours and Contact Info
+                    VStack(alignment: .leading) {
+                        OperatingHoursSection(
+                            days: days,
+                            todayData: todayData,
+                            convertTo12Hour: TimeHelper.convertTo12Hour
+                        )
                         
-                        // Operating Hours and Contact Info
-                        VStack(alignment: .leading) {
-                            OperatingHoursSection(
-                                days: days,
-                                todayData: todayData,
-                                convertTo12Hour: TimeHelper.convertTo12Hour
-                            )
-                            
-                            ContactInfoSection(restaurant: restaurant)
-                        }
-                        .padding(.top, 10)
+                        ContactInfoSection(restaurant: restaurant)
                     }
+                    .padding(.top, 10)
                     .padding(.horizontal, 30)
                     
                     // Website and Email Section at the bottom
@@ -131,12 +182,12 @@ struct DetailPageEats: View {
                                     Text("Visit Website")
                                         .font(.system(size: 16, weight: .semibold))
                                 }
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
                                 .background(
                                     Capsule()
-                                        .fill(Color.blue)
+                                        .stroke(Color.black, lineWidth: 1)
                                 )
                             }
                         }
@@ -156,12 +207,12 @@ struct DetailPageEats: View {
                                     Text("Email")
                                         .font(.system(size: 16, weight: .semibold))
                                 }
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
                                 .background(
                                     Capsule()
-                                        .fill(Color.blue)
+                                        .stroke(Color.black, lineWidth: 1)
                                 )
                             }
                         }

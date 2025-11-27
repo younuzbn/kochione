@@ -51,10 +51,10 @@ struct MenuHome: View {
             .padding(.horizontal, 15)
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(showDetail ? 0 : 1)
-
+            
             GeometryReader { proxy in
                 let size = proxy.size
-
+               
                 MenuCarouselView(
                     size: size,
                     currentTab: $currentTab,
@@ -65,6 +65,8 @@ struct MenuHome: View {
                     selectedCategory: $selectedCategory,
                     animation: animation
                 )
+                
+                    
             }
             .zIndex(-10)
         }
@@ -79,7 +81,7 @@ struct MenuHome: View {
             }
         }
         .background {
-            Color(.black).ignoresSafeArea()
+            Color(.clear).ignoresSafeArea()
                 .onChange(of: selectedCategory) { newValue in
                     let check =  currentTab.items.filter {
                         $0.category.lowercased() == selectedCategory.lowercased()
@@ -98,49 +100,65 @@ struct MenuHome: View {
         }
     }
 
+//    var attributedTitle: AttributedString {
+//        var attString = AttributedString("Order now")
+//
+//        if let orderRange = attString.range(of: "Order") {
+//            attString[orderRange].foregroundColor = .orange
+//        }
+//
+//        if let nowRange = attString.range(of: "now") {
+//            attString[nowRange].foregroundColor = .white
+//        }
+//
+//        return attString
+//    }
+//
+//
+//    var attributedSubTitle: AttributedString {
+//        var attString = AttributedString("And savor")
+//
+//        if let orderRange = attString.range(of: "savor") {
+//            attString[orderRange].foregroundColor = .orange
+//        }
+//
+//        if let nowRange = attString.range(of: "And") {
+//            attString[nowRange].foregroundColor = .white
+//        }
+//
+//        return attString
+//    }
+//
+//    var attributedSubTitle1: AttributedString {
+//        var attString = AttributedString("Your favorites")
+//
+//        if let orderRange = attString.range(of: "Your") {
+//            attString[orderRange].foregroundColor = .orange
+//        }
+//
+//        if let nowRange = attString.range(of: "favorites") {
+//            attString[nowRange].foregroundColor = .white
+//        }
+//
+//        return attString
+//    }
     var attributedTitle: AttributedString {
-        var attString = AttributedString("Order now")
-
-        if let orderRange = attString.range(of: "Order") {
-            attString[orderRange].foregroundColor = .orange
-        }
-
-        if let nowRange = attString.range(of: "now") {
-            attString[nowRange].foregroundColor = .white
-        }
-
+        var attString = AttributedString(stringLiteral: "Order now")
+        attString[attString.range(of: "now")!].foregroundColor = .orange
         return attString
     }
 
-    
     var attributedSubTitle: AttributedString {
-        var attString = AttributedString("And savor")
-
-        if let orderRange = attString.range(of: "savor") {
-            attString[orderRange].foregroundColor = .orange
-        }
-
-        if let nowRange = attString.range(of: "And") {
-            attString[nowRange].foregroundColor = .white
-        }
-
+        var attString = AttributedString(stringLiteral: "And savor")
+        attString[attString.range(of: "And")!].foregroundColor = .orange
         return attString
     }
 
     var attributedSubTitle1: AttributedString {
-        var attString = AttributedString("Your favorites")
-
-        if let orderRange = attString.range(of: "Your") {
-            attString[orderRange].foregroundColor = .orange
-        }
-
-        if let nowRange = attString.range(of: "favorites") {
-            attString[nowRange].foregroundColor = .white
-        }
-
+        var attString = AttributedString(stringLiteral: "Your favorites")
+        attString[attString.range(of: "favorites")!].foregroundColor = .orange
         return attString
     }
-
 
 
 }

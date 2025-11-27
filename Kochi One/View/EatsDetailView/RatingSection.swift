@@ -13,11 +13,7 @@ struct RatingSection: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Divider line
-            Rectangle()
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: 1)
-                .padding(.horizontal, 30)
+
             
             HStack(spacing: 0) {
                 // Rating Display
@@ -76,14 +72,9 @@ struct RatingSection: View {
                 .padding(.vertical, 24)
             }
             .padding(.horizontal, 30)
+            .padding(.top, 10)
             
-            // Divider line
-            Rectangle()
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: 1)
-                .padding(.horizontal, 30)
         }
-        .padding(.vertical, 20)
     }
 }
 

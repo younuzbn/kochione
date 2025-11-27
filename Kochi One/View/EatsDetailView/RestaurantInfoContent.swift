@@ -23,7 +23,7 @@ struct RestaurantInfoContent: View {
                         switch phase {
                         case .empty:
                             Circle()
-                                .fill(Color.gray.opacity(0.1))
+                                .fill(Color.white.opacity(0.9))
                                 .frame(width: 70, height: 70)
                                 .overlay(ProgressView())
                         case .success(let image):
@@ -32,9 +32,13 @@ struct RestaurantInfoContent: View {
                                 .aspectRatio(contentMode: .fill)
                                 .frame(width: 70, height: 70)
                                 .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
                         case .failure:
                             Circle()
-                                .fill(Color.gray.opacity(0.1))
+                                .fill(Color.white.opacity(0.9))
                                 .frame(width: 70, height: 70)
                                 .overlay(Image(systemName: "photo").foregroundStyle(.gray))
                         @unknown default:
@@ -43,7 +47,7 @@ struct RestaurantInfoContent: View {
                     }
                 } else {
                     Circle()
-                        .fill(Color.gray.opacity(0.1))
+                        .fill(Color.white.opacity(0.9))
                         .frame(width: 70, height: 70)
                         .overlay(Image(systemName: "photo").foregroundStyle(.gray))
                 }
@@ -52,7 +56,8 @@ struct RestaurantInfoContent: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(restaurant.name)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                     
                     // Open/Close Status
                     HStack(spacing: 6) {
@@ -63,35 +68,24 @@ struct RestaurantInfoContent: View {
                         if todayData.isOpen {
                             Text("Open")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.green)
+                                .foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                             Text("until \(convertTo12Hour(todayData.hours.close ?? ""))")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                         } else {
                             Text("Closed")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                         }
                     }
                 }
                 
                 Spacer()
             }
-            .padding(.horizontal, 30)
-            .padding(.top, 20)
-            .padding(.bottom, 20)
-            
-            // Divider
-            Rectangle()
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: 1)
-                .padding(.horizontal, 30)
-            
-
-            
-            // Divider removed - no action buttons in this section
         }
-        .background()
     }
 }
 
