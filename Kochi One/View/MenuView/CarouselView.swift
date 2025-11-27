@@ -45,7 +45,10 @@ struct MenuCarouselView: View {
     
     var body: some View {
         VStack(spacing: 16) {// and the spacing -40 changed in 16
-            
+            CustomCarouselTrendingView()
+                .padding(.top,100)
+                .padding(.bottom,-90)
+                .frame(height: 200)
             MenuCustomCarousels(
 //
                 index: $currentIndex,
@@ -99,7 +102,7 @@ struct MenuCarouselView: View {
                         showDetail = true
                     }
                 }
-            }
+            }.offset(y:80)
             .frame(height: size.height * 0.75)// this height 0.8 changed in 0.75
             
             MenuIndicators(
@@ -115,6 +118,7 @@ struct MenuCarouselView: View {
         .frame(width: size.width, height: size.height, alignment: .bottom)
         .opacity(showDetail ? 0 : 1)
         .background {
+            
             MenuCustomArcShape()
                 .fill(.white)
                 .scaleEffect(showDetail ? 1.8 : 1, anchor: .bottomLeading)
@@ -125,7 +129,7 @@ struct MenuCarouselView: View {
                            selection: $selectedCategory,
                            options:options
                        )
-                    .offset(y:showDetail ? -1000 : -30)
+                    .offset(y:showDetail ? -1000 : 165)
                 }
                 .padding(.top, 40)
                 .ignoresSafeArea()
