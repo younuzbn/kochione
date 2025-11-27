@@ -189,6 +189,7 @@ struct EatsViewFull: View {
                                         .scaleEffect(0.7)
                                 }
                         }
+                        .id(expandedURL)
                         .frame(height: 205) // 2 rows × 100px + 5px spacing
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .onTapGesture {
@@ -211,6 +212,7 @@ struct EatsViewFull: View {
                                     print("Tapped image at index \(index): \(tappedURL)")
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         expandedImageURL = tappedURL
+                                        
                                     }
                                 } label: {
                                     CachedAsyncImage(url: coverImage.url) { image in

@@ -149,8 +149,9 @@ struct GallerySection: View {
                                         .bold()
                                         .foregroundStyle(.gray)
                                         .frame(width: 30,height: 30)
-                                        .cornerRadius(50)
+                                        
                                         .background(.ultraThinMaterial)
+                                        .cornerRadius(50)
                                 }
                             }
                             Spacer()
@@ -174,8 +175,9 @@ struct GallerySection: View {
                                         .bold()
                                         .foregroundStyle(.gray)
                                         .frame(width: 30,height: 30)
-                                        .cornerRadius(50)
+                                        
                                         .background(.ultraThinMaterial)
+                                        .cornerRadius(50)
                                 }
                             }
                         }.padding(10)
@@ -241,6 +243,9 @@ struct GallerySection: View {
                         // Add trailing padding to match the right side
                         Spacer()
                             .frame(width: 30)
+                    }
+                    .onAppear{
+                        print("expandedImageURL")
                     }
                     .padding(.vertical, 15)
                 }
