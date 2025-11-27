@@ -87,39 +87,7 @@ struct RestaurantInfoContent: View {
                 .frame(height: 1)
                 .padding(.horizontal, 30)
             
-            // Part 2: Address and Distance
-            VStack(alignment: .leading, spacing: 12) {
-                // Address
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "mappin")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.blue)
-                        .frame(width: 20)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(restaurant.address.street)
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(.primary)
-                        Text("\(restaurant.address.city), \(restaurant.address.state)")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                }
-                
-                // Distance - Below address, no icon
-                HStack {
-                    Text("\(distance) away from you")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.secondary)
-                    
-                    Spacer()
-                }
-                .padding(.leading, 30)
-            }
-            .padding(.horizontal, 30)
-            .padding(.vertical, 20)
+
             
             // Divider removed - no action buttons in this section
         }

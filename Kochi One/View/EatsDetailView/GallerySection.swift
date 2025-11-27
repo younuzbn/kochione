@@ -29,7 +29,77 @@ struct GallerySection: View {
     
     var body: some View {
         if !coverImages.dropFirst().isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {  
+            ScrollView(.horizontal, showsIndicators: false) {
+                
+                
+                
+                
+                //                if let expandedURL = expandedImageURL {
+                //                    // Show expanded image - height of two rows (2 × 100px + 5px spacing = 205px)
+                //                    CachedAsyncImage(url: expandedURL) { image in
+                //                        image
+                //                            .resizable()
+                //                            .aspectRatio(contentMode: .fill)
+                //                    } placeholder: {
+                //                        Rectangle()
+                //                            .fill(.gray.opacity(0.4))
+                //                            .overlay {
+                //                                ProgressView()
+                //                                    .tint(.blue)
+                //                                    .scaleEffect(0.7)
+                //                            }
+                //                    }
+                //                    .frame(height: 205) // 2 rows × 100px + 5px spacing
+                //                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                //                    .onTapGesture {
+                //                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                //                            expandedImageURL = nil
+                //                        }
+                //                    }
+                //                    .transition(.scale.combined(with: .opacity))
+                //                } else {
+                //                    // Show all 4 images in grid
+                //                    let config = ImageViewerConfig(height: 100, cornerRadius: 10, spacing: 5)
+                //                    let coverImagesArray = Array(coverImages.prefix(4))
+                //
+                //                    ImageViewer(config: config) {
+                //                        ForEach(0..<coverImagesArray.count, id: \.self) { index in
+                //                            let coverImage = coverImagesArray[index]
+                //                            Button {
+                //                                // Directly use the index to get the correct image URL
+                //                                let tappedURL = coverImagesArray[index].url
+                //                                print("Tapped image at index \(index): \(tappedURL)")
+                //                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                //                                    expandedImageURL = tappedURL
+                //                                }
+                //                            } label: {
+                //                                CachedAsyncImage(url: coverImage.url) { image in
+                //                                    image
+                //                                        .resizable()
+                //                                } placeholder: {
+                //                                    Rectangle()
+                //                                        .fill(.gray.opacity(0.4))
+                //                                        .overlay {
+                //                                            ProgressView()
+                //                                                .tint(.blue)
+                //                                                .scaleEffect(0.7)
+                //                                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                //                                        }
+                //                                }
+                //                            }
+                //                            .buttonStyle(.plain)
+                //                            .containerValue(\.activeViewID, coverImage.url)
+                //                        }
+                //                    }overlay: {
+                //                        ProgressView()
+                //                            .tint(.blue)
+                //                            .scaleEffect(0.7)
+                //                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                //                    }                }
+                //
+                
+                
+                
                 if let expandedURL = expandedImageURL {
                     ZStack{
                         //                        index = index
@@ -70,7 +140,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         .cornerRadius(50)
                                         .glassEffect()
                                 } else {
@@ -78,9 +148,10 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
-                                        .cornerRadius(50)
+                                        .frame(width: 50,height: 50)
+                                        
                                         .background(.ultraThinMaterial)
+                                        .cornerRadius(50)
                                 }
                             }
                             Spacer()
@@ -95,7 +166,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
+                                        .frame(width: 50,height: 50)
                                         .cornerRadius(50)
                                         .glassEffect()
                                 } else {
@@ -103,9 +174,10 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 30,height: 30)
-                                        .cornerRadius(50)
+                                        .frame(width: 50,height: 50)
+                                        
                                         .background(.ultraThinMaterial)
+                                        .cornerRadius(50)
                                 }
                             }
                         }.padding(10)
@@ -171,6 +243,9 @@ struct GallerySection: View {
                         // Add trailing padding to match the right side
                         Spacer()
                             .frame(width: 30)
+                    }
+                    .onAppear{
+                        print("expandedImageURL")
                     }
                     .padding(.vertical, 15)
                 }
