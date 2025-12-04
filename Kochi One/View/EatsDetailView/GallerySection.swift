@@ -140,7 +140,7 @@ struct GallerySection: View {
                                         .font(.system(size: 18))
                                         .bold()
                                         .foregroundStyle(.gray)
-                                        .frame(width: 50,height: 50)
+                                        .frame(width: 30,height: 30)
                                         .cornerRadius(50)
                                         .glassEffect()
                                 } else {
@@ -183,6 +183,11 @@ struct GallerySection: View {
                         }.padding(10)
                         
                     }
+
+                    .padding(.leading, 30)
+                    .padding(.top, 15)
+                    .padding(.bottom, 20)
+
                 } else {
                     
                     HStack(spacing: 10) {
@@ -244,6 +249,9 @@ struct GallerySection: View {
                         Spacer()
                             .frame(width: 30)
                     }
+
+                    .padding(.leading, 30)
+
                     .onAppear{
                         print("expandedImageURL")
                     }
@@ -254,4 +262,3 @@ struct GallerySection: View {
         }
     }
 }
-

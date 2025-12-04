@@ -21,10 +21,10 @@ struct TransitView: View {
     enum TransitType: String, CaseIterable {
         case metro = "Metro"
         case bus = "Bus"
-        case cab = "Cab"
-        case escooter = "E-scooter"
-        case cycle = "Cycle"
-        case ferry = "Ferry"
+//        case cab = "Cab"
+//        case escooter = "E-scooter"
+//        case cycle = "Cycle"
+//        case ferry = "Ferry"
     }
     
     var body: some View {
@@ -51,14 +51,16 @@ struct TransitView: View {
                     )
                 case .bus:
                     BusView()
-                case .cab:
-                    CabView()
-                case .escooter:
-                    EScooterView()
-                case .cycle:
-                    CycleView()
-                case .ferry:
-                    FerryView()
+                    
+                    //MARK: CAP,cycle
+//                case .cab:
+//                    CabView()
+//                case .escooter:
+//                    EScooterView()
+//                case .cycle:
+//                    CycleView()
+//                case .ferry:
+//                    FerryView()
                 }
             }
             .id(selectedTransit.rawValue)
@@ -1164,14 +1166,14 @@ struct CustomSegmentedControl<T: Hashable & RawRepresentable<String>>: View {
             return "tram.fill"
         case "bus":
             return "bus.fill"
-        case "cab":
-            return "car.fill"
-        case "e-scooter":
-            return "bolt.car.fill"
-        case "cycle":
-            return "bicycle"
-        case "ferry":
-            return "sailboat.fill"
+//        case "cab":
+//            return "car.fill"
+//        case "e-scooter":
+//            return "bolt.car.fill"
+//        case "cycle":
+//            return "bicycle"
+//        case "ferry":
+//            return "sailboat.fill"
         default:
             return "circle.fill"
         }
@@ -1237,7 +1239,7 @@ struct BusView: View {
     }
 }
 
-// MARK: - Cab View
+ //MARK: - Cab View
 struct CabView: View {
     var body: some View {
         ComingSoonView(

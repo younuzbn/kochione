@@ -101,6 +101,7 @@ struct EatsViewFull: View {
     @State private var activeID: String?
     @Binding var showDetail: Bool
     let restaurant: Restaurant
+    
     @ObservedObject var locationService: LocationService
     @ObservedObject private var favouritesManager = FavouritesManager.shared
     @State private var showMapPicker = false
@@ -108,7 +109,7 @@ struct EatsViewFull: View {
     @State private var showShareDialog = false
     @State private var heartScale: CGFloat = 1.0
     @State private var expandedImageURL: String? = nil
-   
+    @State private var indexImage = 0
     var body: some View {
         /// Remove the NavigationStack here, as IndividualTabView is already in a ScrollView
         VStack {
@@ -176,28 +177,88 @@ struct EatsViewFull: View {
                     // Image viewer with expandable images
                     if let expandedURL = expandedImageURL {
                         // Show expanded image - height of two rows (2 × 100px + 5px spacing = 205px)
-                        CachedAsyncImage(url: expandedURL) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle()
-                                .fill(.gray.opacity(0.4))
-                                .overlay {
-                                    ProgressView()
-                                        .tint(.blue)
-                                        .scaleEffect(0.7)
-                                }
-                        }
-                        .id(expandedURL)
-                        .frame(height: 205) // 2 rows × 100px + 5px spacing
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                expandedImageURL = nil
+                        ZStack{
+                            
+                           
+                            let imageUrl = restaurant.coverImages[indexImage].url
+                            CachedAsyncImage(url: imageUrl) { image in
+                                image
+//                            CachedAsyncImage(url: expandedURL) { image in
+//                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                Rectangle()
+                                    .fill(.gray.opacity(0.4))
+                                    .overlay {
+                                        ProgressView()
+                                            .tint(.blue)
+                                            .scaleEffect(0.7)
+                                    }
                             }
+                            .id(imageUrl)
+                            .frame(height: 205) // 2 rows × 100px + 5px spacing
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    expandedImageURL = nil
+                                }
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                            
+                            HStack{
+                                Button {
+                                    withAnimation {
+                                        indexImage = (indexImage - 1 + restaurant.coverImages.count) % restaurant.coverImages.count
+                                    }
+                                } label: {
+                                    if #available(iOS 26.0, *) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 14))
+                                            .bold()
+                                            .foregroundStyle(.gray)
+                                            .frame(width: 30,height: 30)
+                                            .cornerRadius(50)
+                                            .glassEffect()
+                                    } else {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 14))
+                                            .bold()
+                                            .foregroundStyle(.gray)
+                                            .frame(width: 30,height: 30)
+                                            
+                                            .background(.ultraThinMaterial)
+                                            .cornerRadius(50)
+                                    }
+                                }
+                                Spacer()
+                                Button {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        indexImage = (indexImage + 1) % restaurant.coverImages.count
+                                    }
+                                    print("\(indexImage) url: \(restaurant.coverImages[indexImage].url)")
+                                } label: {
+                                    if #available(iOS 26.0, *) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                            .bold()
+                                            .foregroundStyle(.gray)
+                                            .frame(width: 30,height: 30)
+                                            .cornerRadius(50)
+                                            .glassEffect()
+                                    } else {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                            .bold()
+                                            .foregroundStyle(.gray)
+                                            .frame(width: 30,height: 30)
+                                            
+                                            .background(.ultraThinMaterial)
+                                            .cornerRadius(50)
+                                    }
+                                }
+                            }.padding(10)
                         }
-                        .transition(.scale.combined(with: .opacity))
                     } else {
                         // Show all 4 images in grid
                         let config = ImageViewerConfig(height: 100, cornerRadius: 10, spacing: 5)
@@ -212,7 +273,7 @@ struct EatsViewFull: View {
                                     print("Tapped image at index \(index): \(tappedURL)")
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         expandedImageURL = tappedURL
-                                        
+                                        indexImage = index
                                     }
                                 } label: {
                                     CachedAsyncImage(url: coverImage.url) { image in

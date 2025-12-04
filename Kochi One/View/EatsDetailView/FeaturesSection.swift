@@ -42,12 +42,14 @@ struct FeaturesSection: View {
     var body: some View {
         if !features.isEmpty {
             VStack(spacing: 0) {
+
                 // Divider line
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
                     .frame(height: 1)
 
                     .padding(.horizontal, 30)
+
                 
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Features")
