@@ -8,26 +8,157 @@
 import SwiftUI
 import CoreLocation
 import UIKit
+import AVKit
 
-// Model for Explore items
-struct ExploreItem: Identifiable {
-    let id: String
-    let title: String
-    let description: String
-    let location: String
-    let distance: String
-    let images: [String] // Image names from assets
-    let category: String
+// Helper view for loading images from URLs
+struct AsyncImageView: View {
+    let url: String
+    let contentMode: ContentMode
+    
+    init(url: String, contentMode: ContentMode = .fill) {
+        self.url = url
+        self.contentMode = contentMode
+    }
+    
+    var body: some View {
+        if let imageURL = URL(string: url) {
+            AsyncImage(url: imageURL) { phase in
+                switch phase {
+                case .empty:
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .overlay {
+                            ProgressView()
+                        }
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                case .failure:
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .overlay {
+                            Image(systemName: "photo")
+                                .foregroundColor(.gray)
+                        }
+                @unknown default:
+                    EmptyView()
+                }
+            }
+        } else {
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .overlay {
+                    Image(systemName: "photo")
+                        .foregroundColor(.gray)
+                }
+        }
+    }
 }
 
-// Reusable Explore Type One View (similar to EatsViewFull)
+// Helper view for playing videos from URLs
+struct VideoPlayerView: View {
+    let url: String
+    @State private var player: AVPlayer?
+    @State private var showPlayButton = true
+    
+    var body: some View {
+        Group {
+            if let videoURL = URL(string: url) {
+                ZStack {
+                    if let player = player {
+                        VideoPlayer(player: player)
+                            .onAppear {
+                                // Don't auto-play in grid view
+                                player.pause()
+                            }
+                            .onDisappear {
+                                player.pause()
+                            }
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay {
+                                VStack {
+                                    ProgressView()
+                                    Text("Loading video...")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            .onAppear {
+                                player = AVPlayer(url: videoURL)
+                            }
+                    }
+                    
+                    // Play button overlay
+                    if showPlayButton {
+                        Button {
+                            player?.play()
+                            showPlayButton = false
+                        } label: {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(.white)
+                                .background(Color.black.opacity(0.5))
+                                .clipShape(Circle())
+                        }
+                    }
+                }
+                .onTapGesture {
+                    if let player = player {
+                        if player.timeControlStatus == .playing {
+                            player.pause()
+                            showPlayButton = true
+                        } else {
+                            player.play()
+                            showPlayButton = false
+                        }
+                    }
+                }
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .overlay {
+                        Image(systemName: "video.slash")
+                            .foregroundColor(.gray)
+                    }
+            }
+        }
+    }
+}
+
+// Media Item View - handles both images and videos
+struct MediaItemView: View {
+    let mediaItem: MediaItem
+    
+    var body: some View {
+        if mediaItem.type == "video" {
+            VideoPlayerView(url: mediaItem.url)
+        } else {
+            AsyncImageView(url: mediaItem.url, contentMode: .fill)
+        }
+    }
+}
+
+// Reusable Explore Type One View (postType = 1)
 struct ExploreTypeOne: View {
     @State private var activeID: String?
     @Binding var showDetail: Bool
-    let item: ExploreItem
+    let post: ExplorePost
+    @State private var showCallDialog = false
+    @State private var showMapPicker = false
     
     private var imageViewerConfig: ImageViewerConfig {
         ImageViewerConfig(height: 100, cornerRadius: 10, spacing: 5)
+    }
+    
+    // Get media items (images and videos) sorted by position
+    private var mediaItems: [MediaItem] {
+        post.media
+            .sorted { $0.position < $1.position }
+            .prefix(4)
+            .map { $0 }
     }
     
     var body: some View {
@@ -35,7 +166,7 @@ struct ExploreTypeOne: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(item.title)
+                        Text(post.title)
                             .font(.headline)
                             .lineLimit(1)
                         
@@ -43,63 +174,183 @@ struct ExploreTypeOne: View {
                     }
                     
                     // Description
-                    Text(item.description)
+                    Text(post.description)
                         .font(.subheadline)
                         .lineLimit(4)
                         .padding(.top, 10)
                         .padding(.bottom, 20)
                     
-                    // Image Viewer with snooker images - same design as EatsView (4 images, 2x2 grid)
+                    // Image Viewer with images and videos from API - same design as EatsView (4 items, 2x2 grid)
+                    if !mediaItems.isEmpty {
                     ImageViewer(config: imageViewerConfig) {
-                        ForEach(item.images.prefix(4), id: \.self) { imageName in
-                            Image(imageName)
-                                .resizable()
-                                .containerValue(\.activeViewID, imageName)
+                            ForEach(mediaItems, id: \.url) { mediaItem in
+                                MediaItemView(mediaItem: mediaItem)
+                                    .containerValue(\.activeViewID, mediaItem.url)
                         }
                     } overlay: {
-                        OverlayViewExplore(activeID: activeID, item: item)
+                            OverlayViewExplore(activeID: activeID, post: post)
                     } updates: { isPresented, activeID in
                         self.activeID = activeID?.base as? String
+                        }
                     }
                     
-                    // Action buttons
-                    HStack {
-                        // Message/Comment Button
-                        Button {
-                            print("Comment button tapped")
-                        } label: {
-                            Image(systemName: "message")
-                        }
+                    // Action buttons or single button based on contactInfo type (optional)
+                    if let contactInfo = post.contactInfo {
+                        // Check if button type has data
+                        let hasButtonData = contactInfo.type == "button" &&
+                            contactInfo.buttonLabel != nil &&
+                            !contactInfo.buttonLabel!.isEmpty &&
+                            contactInfo.buttonUrl != nil &&
+                            !contactInfo.buttonUrl!.isEmpty
                         
-                        Spacer()
+                        // Check if contact type has any data
+                        let hasContactData = contactInfo.type == "contact" && (
+                            (contactInfo.mobile != nil && !contactInfo.mobile!.isEmpty) ||
+                            (contactInfo.email != nil && !contactInfo.email!.isEmpty) ||
+                            (contactInfo.website != nil && !contactInfo.website!.isEmpty) ||
+                            contactInfo.location != nil
+                        )
                         
-                        // Repost Button
-                        Button {
-                            print("Repost button tapped")
-                        } label: {
-                            Image(systemName: "arrow.trianglehead.bottomleft.capsulepath.clockwise")
-                        }
-                        
-                        Spacer()
-                        
-                        // Like/Heart Button
-                        Button {
-                            print("Like button tapped")
-                        } label: {
-                            Image(systemName: "suit.heart")
-                        }
-                        
-                        Spacer()
-                        
-                        // Share Button
-                        Button {
-                            print("Share button tapped")
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
+                        if hasButtonData {
+                            // Single wide button for button type
+                            if let buttonLabel = contactInfo.buttonLabel,
+                               let buttonUrl = contactInfo.buttonUrl {
+                                Button {
+                                    var urlString = buttonUrl
+                                    if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                        urlString = "https://\(urlString)"
+                                    }
+                                    if let url = URL(string: urlString) {
+                                        UIApplication.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack {
+                                        if let icon = contactInfo.buttonIcon, !icon.isEmpty {
+                                            Image(systemName: icon)
+                                        }
+                                        Text(buttonLabel)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                                }
+                                .padding(.top, 10)
+                            }
+                        } else if hasContactData {
+                            // 4 action buttons (Call, Email, Website, Navigation) for contact type
+                            HStack {
+                                // 1. Call Button
+                                Button {
+                                    print("Call button tapped")
+                                    showCallDialog = true
+                                } label: {
+                                    Image(systemName: "phone.fill")
+                                }
+                                .disabled(contactInfo.mobile == nil || contactInfo.mobile?.isEmpty == true)
+                                .confirmationDialog("Call \(post.title)?", isPresented: $showCallDialog, titleVisibility: .visible) {
+                                    Button("Call") {
+                                        guard let mobile = contactInfo.mobile, !mobile.isEmpty else {
+                                            print("Phone number is empty")
+                                            return
+                                        }
+                                        
+                                        // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
+                                        let cleanedNumber = mobile
+                                            .replacingOccurrences(of: " ", with: "")
+                                            .replacingOccurrences(of: "-", with: "")
+                                            .replacingOccurrences(of: "(", with: "")
+                                            .replacingOccurrences(of: ")", with: "")
+                                            .replacingOccurrences(of: ".", with: "")
+                                        
+                                        if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                                            if UIApplication.shared.canOpenURL(phoneURL) {
+                                                UIApplication.shared.open(phoneURL)
+                                            } else {
+                                                print("Cannot open phone URL: \(phoneURL)")
+                                            }
+                                        } else {
+                                            print("Invalid phone number format: \(cleanedNumber)")
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                } message: {
+                                    Text(contactInfo.mobile?.isEmpty == true ? "No phone number available" : (contactInfo.mobile ?? ""))
+                                }
+                                
+                                Spacer()
+                                
+                                // 2. Email Button
+                                Button {
+                                    if let email = contactInfo.email, !email.isEmpty {
+                                        if let url = URL(string: "mailto:\(email)") {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "envelope.fill")
+                                }
+                                .disabled(contactInfo.email == nil || contactInfo.email?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 3. Website Button
+                                Button {
+                                    if let website = contactInfo.website, !website.isEmpty {
+                                        var urlString = website
+                                        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                            urlString = "https://\(urlString)"
+                                        }
+                                        if let url = URL(string: urlString) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "globe")
+                                }
+                                .disabled(contactInfo.website == nil || contactInfo.website?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 4. Navigation Button
+                                Button {
+                                    print("Navigation button tapped")
+                                    guard let location = contactInfo.location else { return }
+                                    
+                                    // Show map picker if multiple apps available, otherwise open directly
+                                    let availableApps = MapApp.availableApps()
+                                    if availableApps.count == 1, let app = availableApps.first {
+                                        // Only one app available, open directly
+                                        if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    } else {
+                                        // Multiple apps available, show picker
+                                        showMapPicker = true
+                                    }
+                                } label: {
+                                    Image(systemName: "location.fill")
+                                }
+                                .disabled(contactInfo.location == nil)
+                                .confirmationDialog("Choose Navigation App", isPresented: $showMapPicker, titleVisibility: .visible) {
+                                    if let location = contactInfo.location {
+                                        ForEach(MapApp.availableApps()) { app in
+                                            Button(app.rawValue) {
+                                                if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                                    UIApplication.shared.open(url)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                }
+                            }
+                            .foregroundStyle(.primary.secondary)
+                            .padding(.top, 10)
                         }
                     }
-                    .foregroundStyle(.primary.secondary)
-                    .padding(.top, 10)
                 }
                 .padding(.top, 10)
             }
@@ -111,20 +362,28 @@ struct ExploreTypeOne: View {
     }
 }
 
-// Reusable Explore Type Two View (same design as ExploreTypeOne but with swipeable single image)
+// Reusable Explore Type Two View (postType = 2)
 struct ExploreTypeTwo: View {
     @State private var activeID: String?
     @Binding var showDetail: Bool
-    let item: ExploreItem
-    @State private var currentImageIndex: Int = 0
+    let post: ExplorePost
+    @State private var currentMediaIndex: Int = 0
     @Environment(\.colorScheme) var colorScheme
+    @State private var showCallDialog = false
+    @State private var showMapPicker = false
+    
+    // Get media items (images and videos) sorted by position
+    private var mediaItems: [MediaItem] {
+        post.media
+            .sorted { $0.position < $1.position }
+    }
     
     var body: some View {
         VStack {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(item.title)
+                        Text(post.title)
                             .font(.headline)
                             .lineLimit(1)
                         
@@ -132,18 +391,17 @@ struct ExploreTypeTwo: View {
                     }
                     
                     // Description
-                    Text(item.description)
+                    Text(post.description)
                         .font(.subheadline)
                         .lineLimit(4)
                         .padding(.top, 10)
                         .padding(.bottom, 20)
                     
-                    // Swipeable single image carousel
-                    TabView(selection: $currentImageIndex) {
-                        ForEach(Array(item.images.enumerated()), id: \.offset) { index, imageName in
-                            Image(imageName)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
+                    // Swipeable single media carousel (images and videos)
+                    if !mediaItems.isEmpty {
+                        TabView(selection: $currentMediaIndex) {
+                            ForEach(Array(mediaItems.enumerated()), id: \.element.url) { index, mediaItem in
+                                MediaItemView(mediaItem: mediaItem)
                                 .frame(height: 200)
                                 .tag(index)
                         }
@@ -160,45 +418,165 @@ struct ExploreTypeTwo: View {
                         UIPageControl.appearance().currentPageIndicatorTintColor = newValue == .dark ? UIColor.white : UIColor.black
                         UIPageControl.appearance().pageIndicatorTintColor = newValue == .dark ? UIColor.white.withAlphaComponent(0.3) : UIColor.black.withAlphaComponent(0.3)
                     }
+                    }
                     
-                    // Action buttons
-                    HStack {
-                        // Message/Comment Button
-                        Button {
-                            print("Comment button tapped")
-                        } label: {
-                            Image(systemName: "message")
-                        }
+                    // Action buttons or single button based on contactInfo type (optional)
+                    if let contactInfo = post.contactInfo {
+                        // Check if button type has data
+                        let hasButtonData = contactInfo.type == "button" &&
+                            contactInfo.buttonLabel != nil &&
+                            !contactInfo.buttonLabel!.isEmpty &&
+                            contactInfo.buttonUrl != nil &&
+                            !contactInfo.buttonUrl!.isEmpty
                         
-                        Spacer()
+                        // Check if contact type has any data
+                        let hasContactData = contactInfo.type == "contact" && (
+                            (contactInfo.mobile != nil && !contactInfo.mobile!.isEmpty) ||
+                            (contactInfo.email != nil && !contactInfo.email!.isEmpty) ||
+                            (contactInfo.website != nil && !contactInfo.website!.isEmpty) ||
+                            contactInfo.location != nil
+                        )
                         
-                        // Repost Button
-                        Button {
-                            print("Repost button tapped")
-                        } label: {
-                            Image(systemName: "arrow.trianglehead.bottomleft.capsulepath.clockwise")
-                        }
-                        
-                        Spacer()
-                        
-                        // Like/Heart Button
-                        Button {
-                            print("Like button tapped")
-                        } label: {
-                            Image(systemName: "suit.heart")
-                        }
-                        
-                        Spacer()
-                        
-                        // Share Button
-                        Button {
-                            print("Share button tapped")
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
+                        if hasButtonData {
+                            // Single wide button for button type
+                            if let buttonLabel = contactInfo.buttonLabel,
+                               let buttonUrl = contactInfo.buttonUrl {
+                                Button {
+                                    var urlString = buttonUrl
+                                    if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                        urlString = "https://\(urlString)"
+                                    }
+                                    if let url = URL(string: urlString) {
+                                        UIApplication.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack {
+                                        if let icon = contactInfo.buttonIcon, !icon.isEmpty {
+                                            Image(systemName: icon)
+                                        }
+                                        Text(buttonLabel)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                                }
+                                .padding(.top, 10)
+                            }
+                        } else if hasContactData {
+                            // 4 action buttons (Call, Email, Website, Navigation) for contact type
+                            HStack {
+                                // 1. Call Button
+                                Button {
+                                    print("Call button tapped")
+                                    showCallDialog = true
+                                } label: {
+                                    Image(systemName: "phone.fill")
+                                }
+                                .disabled(contactInfo.mobile == nil || contactInfo.mobile?.isEmpty == true)
+                                .confirmationDialog("Call \(post.title)?", isPresented: $showCallDialog, titleVisibility: .visible) {
+                                    Button("Call") {
+                                        guard let mobile = contactInfo.mobile, !mobile.isEmpty else {
+                                            print("Phone number is empty")
+                                            return
+                                        }
+                                        
+                                        // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
+                                        let cleanedNumber = mobile
+                                            .replacingOccurrences(of: " ", with: "")
+                                            .replacingOccurrences(of: "-", with: "")
+                                            .replacingOccurrences(of: "(", with: "")
+                                            .replacingOccurrences(of: ")", with: "")
+                                            .replacingOccurrences(of: ".", with: "")
+                                        
+                                        if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                                            if UIApplication.shared.canOpenURL(phoneURL) {
+                                                UIApplication.shared.open(phoneURL)
+                                            } else {
+                                                print("Cannot open phone URL: \(phoneURL)")
+                                            }
+                                        } else {
+                                            print("Invalid phone number format: \(cleanedNumber)")
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                } message: {
+                                    Text(contactInfo.mobile?.isEmpty == true ? "No phone number available" : (contactInfo.mobile ?? ""))
+                                }
+                                
+                                Spacer()
+                                
+                                // 2. Email Button
+                                Button {
+                                    if let email = contactInfo.email, !email.isEmpty {
+                                        if let url = URL(string: "mailto:\(email)") {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "envelope.fill")
+                                }
+                                .disabled(contactInfo.email == nil || contactInfo.email?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 3. Website Button
+                                Button {
+                                    if let website = contactInfo.website, !website.isEmpty {
+                                        var urlString = website
+                                        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                            urlString = "https://\(urlString)"
+                                        }
+                                        if let url = URL(string: urlString) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "globe")
+                                }
+                                .disabled(contactInfo.website == nil || contactInfo.website?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 4. Navigation Button
+                                Button {
+                                    print("Navigation button tapped")
+                                    guard let location = contactInfo.location else { return }
+                                    
+                                    // Show map picker if multiple apps available, otherwise open directly
+                                    let availableApps = MapApp.availableApps()
+                                    if availableApps.count == 1, let app = availableApps.first {
+                                        // Only one app available, open directly
+                                        if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    } else {
+                                        // Multiple apps available, show picker
+                                        showMapPicker = true
+                                    }
+                                } label: {
+                                    Image(systemName: "location.fill")
+                                }
+                                .disabled(contactInfo.location == nil)
+                                .confirmationDialog("Choose Navigation App", isPresented: $showMapPicker, titleVisibility: .visible) {
+                                    if let location = contactInfo.location {
+                                        ForEach(MapApp.availableApps()) { app in
+                                            Button(app.rawValue) {
+                                                if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                                    UIApplication.shared.open(url)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                }
+                            }
+                            .foregroundStyle(.primary.secondary)
+                            .padding(.top, 10)
                         }
                     }
-                    .foregroundStyle(.primary.secondary)
-                    .padding(.top, 10)
                 }
                 .padding(.top, 10)
             }
@@ -213,7 +591,7 @@ struct ExploreTypeTwo: View {
 // Overlay View for Explore
 struct OverlayViewExplore: View {
     var activeID: String?
-    let item: ExploreItem
+    let post: ExplorePost
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -229,11 +607,9 @@ struct OverlayViewExplore: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay {
-                if item.images.contains(where: { $0 == activeID }) {
-                    Text(item.title)
+                Text(post.title)
                         .font(.callout)
                         .foregroundStyle(.white)
-                }
             }
             
             Spacer(minLength: 0)
@@ -244,92 +620,87 @@ struct OverlayViewExplore: View {
 
 // Main Explore View
 struct ExploreView: View {
-    // Dummy data for ExploreTypeOne - need 4 images for 2x2 grid
-    @State private var exploreTypeOneItems: [ExploreItem] = [
-        ExploreItem(
-            id: "1",
-            title: "Snooker Championship 2024",
-            description: "Join us for the biggest snooker championship of the year. Watch professional players compete for the grand prize. Experience the thrill of precision and strategy.",
-            location: "Kochi Sports Complex",
-            distance: "2.5 km",
-            images: ["snooker", "snooker2", "snooker3", "snooker4"], // 4 images for 2x2 grid
-            category: "Sports"
-        ),
-        ExploreItem(
-            id: "2",
-            title: "Local Snooker Tournament",
-            description: "Community snooker tournament happening this weekend. All skill levels welcome. Come and enjoy a day of competitive snooker with friends and family.",
-            location: "Downtown Recreation Center",
-            distance: "5.8 km",
-            images: ["snooker", "snooker2", "snooker3", "snooker4"], // 4 images for 2x2 grid
-            category: "Events"
-        )
-    ]
-    
-    // Dummy data for ExploreTypeTwo - swipeable single image
-    @State private var exploreTypeTwoItems: [ExploreItem] = [
-        ExploreItem(
-            id: "3",
-            title: "Weekend Snooker Session",
-            description: "Join us every weekend for casual snooker sessions. Perfect for beginners and intermediate players. Equipment provided. Book your slot now!",
-            location: "City Sports Club",
-            distance: "3.2 km",
-            images: ["snooker", "snooker2", "snooker3"], // Multiple images for swiping
-            category: "Weekly"
-        ),
-        ExploreItem(
-            id: "4",
-            title: "Professional Snooker Training",
-            description: "Learn from professional coaches. Advanced training sessions for serious players. Improve your technique and strategy with expert guidance.",
-            location: "Elite Sports Academy",
-            distance: "7.1 km",
-            images: ["snooker", "snooker2", "snooker3"], // Multiple images for swiping
-            category: "Training"
-        )
-    ]
-    
+    @StateObject private var viewModel = ExploreViewModel()
     @State private var showDetail = false
-    @State private var selectedItem: ExploreItem?
+    @State private var selectedPost: ExplorePost?
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 0) {
-                // Two ExploreTypeOne views
-                ForEach(exploreTypeOneItems) { item in
-                    ExploreTypeOne(showDetail: $showDetail, item: item)
-                        .onTapGesture {
-                            print("Explore item tapped: \(item.title)")
-                            selectedItem = item
-                            showDetail = true
-                        }
+        Group {
+            if viewModel.isLoading && viewModel.posts.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMessage = viewModel.errorMessage {
+                VStack(spacing: 16) {
+                    Text("Error loading posts")
+                        .font(.headline)
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                     
-                    // Add a subtle separator between items
-                    Divider()
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 15)
+                    Button("Retry") {
+                        Task {
+                            await viewModel.fetchPosts()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                
-                // Two ExploreTypeTwo views
-                ForEach(exploreTypeTwoItems) { item in
-                    ExploreTypeTwo(showDetail: $showDetail, item: item)
-                        .onTapGesture {
-                            print("Explore item tapped: \(item.title)")
-                            selectedItem = item
-                            showDetail = true
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.posts.isEmpty {
+                VStack {
+                    Text("No posts available")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.posts.enumerated()), id: \.element.id) { index, post in
+                            // Use postType to determine which view to show
+                            if post.postType == 1 {
+                                ExploreTypeOne(showDetail: $showDetail, post: post)
+                                    .onTapGesture {
+                                        selectedPost = post
+                                        showDetail = true
+                                    }
+                            } else if post.postType == 2 {
+                                ExploreTypeTwo(showDetail: $showDetail, post: post)
+                                    .onTapGesture {
+                                        selectedPost = post
+                                        showDetail = true
+                                    }
+                            }
+                            
+                            // Add a subtle separator between items (not for the last item)
+                            if index < viewModel.posts.count - 1 {
+                                Divider()
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 15)
+                            }
                         }
-                    
-                    // Add a subtle separator between items
-                    Divider()
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 15)
+                    }
                 }
             }
         }
+        .task {
+            await viewModel.fetchPosts()
+        }
+        .onAppear {
+            // Refresh data when view appears to ensure latest data
+            Task {
+                await viewModel.fetchPosts()
+            }
+        }
+        .refreshable {
+            await viewModel.fetchPosts()
+        }
         .fullScreenCover(isPresented: $showDetail) {
-            if let item = selectedItem {
-                ExploreDetailView(item: item) {
+            if let post = selectedPost {
+                ExploreDetailView(post: post) {
                     showDetail = false
-                    selectedItem = nil
+                    selectedPost = nil
                 }
             }
         }
@@ -338,8 +709,16 @@ struct ExploreView: View {
 
 // Detail View for Explore items
 struct ExploreDetailView: View {
-    let item: ExploreItem
+    let post: ExplorePost
     let onBack: () -> Void
+    @State private var showCallDialog = false
+    @State private var showMapPicker = false
+    
+    // Get media items (images and videos) sorted by position
+    private var mediaItems: [MediaItem] {
+        post.media
+            .sorted { $0.position < $1.position }
+    }
     
     var body: some View {
         VStack {
@@ -361,67 +740,208 @@ struct ExploreDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Title and basic info
-                    HStack(alignment: .top, spacing: 12) {
-                        Circle()
-                            .fill(.fill)
-                            .frame(width: 60, height: 60)
-                        
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(item.title)
+                        Text(post.title)
                                 .font(.title2)
                                 .fontWeight(.bold)
                             
-                            HStack {
-                                Text(item.distance)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Image(systemName: "location.north.line.fill")
-                                    .foregroundColor(.blue)
-                            }
-                            
-                            if !item.description.isEmpty {
-                                Text(item.description)
+                        if !post.description.isEmpty {
+                            Text(post.description)
                                     .font(.body)
                                     .foregroundColor(.secondary)
-                            }
                         }
-                        
-                        Spacer()
                     }
                     
-                    // Images
-                    if !item.images.isEmpty {
+                    // Media (Images and Videos)
+                    if !mediaItems.isEmpty {
                         let config = ImageViewerConfig(height: 200, cornerRadius: 15, spacing: 8)
                         
                         ImageViewer(config: config) {
-                            ForEach(item.images, id: \.self) { imageName in
-                                Image(imageName)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .containerValue(\.activeViewID, imageName)
+                            ForEach(mediaItems, id: \.url) { mediaItem in
+                                MediaItemView(mediaItem: mediaItem)
+                                    .containerValue(\.activeViewID, mediaItem.url)
                             }
                         } overlay: {
-                            OverlayViewExplore(activeID: nil, item: item)
+                            OverlayViewExplore(activeID: nil, post: post)
                         } updates: { isPresented, activeID in
                             // Handle image viewer updates if needed
+                        }
+                    }
+                    
+                    // Action buttons or single button based on contactInfo type (optional)
+                    if let contactInfo = post.contactInfo {
+                        // Check if button type has data
+                        let hasButtonData = contactInfo.type == "button" &&
+                            contactInfo.buttonLabel != nil &&
+                            !contactInfo.buttonLabel!.isEmpty &&
+                            contactInfo.buttonUrl != nil &&
+                            !contactInfo.buttonUrl!.isEmpty
+                        
+                        // Check if contact type has any data
+                        let hasContactData = contactInfo.type == "contact" && (
+                            (contactInfo.mobile != nil && !contactInfo.mobile!.isEmpty) ||
+                            (contactInfo.email != nil && !contactInfo.email!.isEmpty) ||
+                            (contactInfo.website != nil && !contactInfo.website!.isEmpty) ||
+                            contactInfo.location != nil
+                        )
+                        
+                        if hasButtonData {
+                            // Single wide button for button type
+                            if let buttonLabel = contactInfo.buttonLabel,
+                               let buttonUrl = contactInfo.buttonUrl {
+                                Button {
+                                    var urlString = buttonUrl
+                                    if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                        urlString = "https://\(urlString)"
+                                    }
+                                    if let url = URL(string: urlString) {
+                                        UIApplication.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack {
+                                        if let icon = contactInfo.buttonIcon, !icon.isEmpty {
+                                            Image(systemName: icon)
+                                        }
+                                        Text(buttonLabel)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                                }
+                                .padding(.top)
+                            }
+                        } else if hasContactData {
+                            // 4 action buttons (Call, Email, Website, Navigation) for contact type
+                            HStack {
+                                // 1. Call Button
+                                Button {
+                                    print("Call button tapped")
+                                    showCallDialog = true
+                                } label: {
+                                    Image(systemName: "phone.fill")
+                                }
+                                .disabled(contactInfo.mobile == nil || contactInfo.mobile?.isEmpty == true)
+                                .confirmationDialog("Call \(post.title)?", isPresented: $showCallDialog, titleVisibility: .visible) {
+                                    Button("Call") {
+                                        guard let mobile = contactInfo.mobile, !mobile.isEmpty else {
+                                            print("Phone number is empty")
+                                            return
+                                        }
+                                        
+                                        // Clean phone number: remove spaces, dashes, parentheses, etc., but keep + for international
+                                        let cleanedNumber = mobile
+                                            .replacingOccurrences(of: " ", with: "")
+                                            .replacingOccurrences(of: "-", with: "")
+                                            .replacingOccurrences(of: "(", with: "")
+                                            .replacingOccurrences(of: ")", with: "")
+                                            .replacingOccurrences(of: ".", with: "")
+                                        
+                                        if let phoneURL = URL(string: "tel://\(cleanedNumber)") {
+                                            if UIApplication.shared.canOpenURL(phoneURL) {
+                                                UIApplication.shared.open(phoneURL)
+                                            } else {
+                                                print("Cannot open phone URL: \(phoneURL)")
+                                            }
+                                        } else {
+                                            print("Invalid phone number format: \(cleanedNumber)")
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                } message: {
+                                    Text(contactInfo.mobile?.isEmpty == true ? "No phone number available" : (contactInfo.mobile ?? ""))
+                                }
+                                
+                                Spacer()
+                                
+                                // 2. Email Button
+                                Button {
+                                    if let email = contactInfo.email, !email.isEmpty {
+                                        if let url = URL(string: "mailto:\(email)") {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "envelope.fill")
+                                }
+                                .disabled(contactInfo.email == nil || contactInfo.email?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 3. Website Button
+                                Button {
+                                    if let website = contactInfo.website, !website.isEmpty {
+                                        var urlString = website
+                                        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+                                            urlString = "https://\(urlString)"
+                                        }
+                                        if let url = URL(string: urlString) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "globe")
+                                }
+                                .disabled(contactInfo.website == nil || contactInfo.website?.isEmpty == true)
+                                
+                                Spacer()
+                                
+                                // 4. Navigation Button
+                                Button {
+                                    print("Navigation button tapped")
+                                    guard let location = contactInfo.location else { return }
+                                    
+                                    // Show map picker if multiple apps available, otherwise open directly
+                                    let availableApps = MapApp.availableApps()
+                                    if availableApps.count == 1, let app = availableApps.first {
+                                        // Only one app available, open directly
+                                        if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    } else {
+                                        // Multiple apps available, show picker
+                                        showMapPicker = true
+                                    }
+                                } label: {
+                                    Image(systemName: "location.fill")
+                                }
+                                .disabled(contactInfo.location == nil)
+                                .confirmationDialog("Choose Navigation App", isPresented: $showMapPicker, titleVisibility: .visible) {
+                                    if let location = contactInfo.location {
+                                        ForEach(MapApp.availableApps()) { app in
+                                            Button(app.rawValue) {
+                                                if let url = app.navigationURL(latitude: location.latitude, longitude: location.longitude, businessName: post.title) {
+                                                    UIApplication.shared.open(url)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Button("Cancel", role: .cancel) { }
+                                }
+                            }
+                            .foregroundStyle(.primary.secondary)
+                            .padding(.top)
                         }
                     }
                     
                     // Additional details
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Image(systemName: "location")
+                            Image(systemName: "eye.fill")
                                 .foregroundColor(.blue)
-                            Text(item.location)
+                            Text("\(post.views) views")
                                 .font(.body)
                         }
                         
+                        if let contactInfo = post.contactInfo, let location = contactInfo.location {
                         HStack {
-                            Image(systemName: "tag")
+                                Image(systemName: "location.fill")
                                 .foregroundColor(.blue)
-                            Text(item.category)
+                                Text("\(String(format: "%.4f", location.latitude)), \(String(format: "%.4f", location.longitude))")
                                 .font(.body)
+                            }
                         }
                     }
                     .padding(.top)

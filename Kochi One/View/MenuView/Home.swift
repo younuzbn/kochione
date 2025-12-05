@@ -36,50 +36,48 @@ struct MenuHome: View {
 
     var body: some View {
         VStack {
-            MenuHeaderView(
-                searchText: $searchText,
-                isFocused: _isFocused,
-                isHovered: $isHovered,
-                showDetail: showDetail
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(attributedTitle).font(.title.bold())
-                Text(attributedSubTitle).font(.title.bold())
-                Text(attributedSubTitle1).font(.title.bold())
-            }
-            .padding(.horizontal, 15)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .opacity(showDetail ? 0 : 1)
-            
-            GeometryReader { proxy in
-                let size = proxy.size
-               
-                MenuCarouselView(
-                    size: size,
-                    currentTab: $currentTab,
-                    currentIndex: $currentIndex,
-                    selectedItem: $selectedItem,
-                    showDetail: $showDetail,
-                    allItems: allFoodItems,
-                    selectedCategory: $selectedCategory,
-                    animation: animation
+            ScrollView{
+                MenuHeaderView(
+                    searchText: $searchText,
+                    isFocused: _isFocused,
+                    isHovered: $isHovered,
+                    showDetail: showDetail
                 )
                 
-                    
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(attributedTitle).font(.title.bold())
+                    Text(attributedSubTitle).font(.title.bold())
+                    Text(attributedSubTitle1).font(.title.bold())
+                }
+                .padding(.horizontal, 15)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(showDetail ? 0 : 1)
+                
+//                GeometryReader { proxy in
+//                    let size = proxy.size
+//
+//                    MenuCarouselView(
+//                        size: size,
+//                        currentTab: $currentTab,
+//                        currentIndex: $currentIndex,
+//                        selectedItem: $selectedItem,
+//                        showDetail: $showDetail,
+//                        allItems: allFoodItems,
+//                        selectedCategory: $selectedCategory,
+//                        animation: animation
+//                    )
+//                    //                CardDesign(item: FoodItem)
+//
+//                }
+               
+                .zIndex(-10)
+                
+                ForEach(allFoodItems) { item in
+                    CardDesign(item: item)
+                }
             }
-            .zIndex(-10)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .overlay {
-            if let selectedItem, showDetail {
-                MenuDetailView(
-                    animation: animation,
-                    item: selectedItem,
-                    show: $showDetail
-                )
-            }
-        }
+      
         .background {
             Color(.clear).ignoresSafeArea()
                 .onChange(of: selectedCategory) { newValue in
@@ -89,13 +87,15 @@ struct MenuHome: View {
                         
                 }
                 .onAppear {
-//                print(  """
-//                        currentTab: \(currentTab)
-//                           currentIndex: \(currentIndex),
-//                           selectedItem: \(selectedItem),
-//                           showDetail: \(showDetail),
-//                           animation: \(animation)
-//                """)
+                print(  """
+                        currentTab: \(currentTab)
+                           currentIndex: \(currentIndex),
+                           selectedItem: \(selectedItem),
+                           showDetail: \(showDetail),
+                           animation: \(animation),
+                home view
+
+                """)
             }
         }
     }

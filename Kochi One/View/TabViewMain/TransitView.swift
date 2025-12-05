@@ -20,11 +20,7 @@ struct TransitView: View {
     
     enum TransitType: String, CaseIterable {
         case metro = "Metro"
-        case bus = "Bus"
-        case cab = "Cab"
-        case escooter = "E-scooter"
-        case cycle = "Cycle"
-        case ferry = "Ferry"
+        case comingSoon = "Coming Soon"
     }
     
     var body: some View {
@@ -49,16 +45,8 @@ struct TransitView: View {
                         showingFromPicker: $showingFromPicker,
                         showingToPicker: $showingToPicker
                     )
-                case .bus:
-                    BusView()
-                case .cab:
-                    CabView()
-                case .escooter:
-                    EScooterView()
-                case .cycle:
-                    CycleView()
-                case .ferry:
-                    FerryView()
+                case .comingSoon:
+                    ComingSoonCategoryView()
                 }
             }
             .id(selectedTransit.rawValue)
@@ -149,8 +137,9 @@ struct MetroView: View {
                 .padding(.top, 6)
                 .padding(.bottom, 8)
                 
-                // Metro Timings List (only show if both stations selected)
+                // Metro Timings List
                 if let from = fromStation, let to = toStation {
+                    // Both stations selected - show route-specific timings
                     MetroTimingsList(
                         fromStation: from,
                         toStation: to,
@@ -159,14 +148,22 @@ struct MetroView: View {
                     )
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)
+                } else if let from = fromStation {
+                    // Only start point selected - show trains in both directions
+                    SingleStationTimingsView(
+                        station: from,
+                        metroService: metroService
+                    )
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
                 } else {
-                    // Placeholder when stations not selected
+                    // No station selected
                     VStack(spacing: 16) {
                         Image(systemName: "tram.fill")
                             .font(.system(size: 48))
                             .foregroundStyle(.gray.opacity(0.4))
                         
-                        Text("Select destination to see metro timings")
+                        Text("Select starting point to see metro timings")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -504,6 +501,397 @@ struct StationRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Single Station Timings View
+struct SingleStationTimingsView: View {
+    let station: MetroStation
+    @ObservedObject var metroService: MetroDataService
+    @State private var expandedTripId: String? = nil
+    
+    var upcomingTripsDirection0: [(time: String, minutes: Int, trip: MetroTrip)] {
+        getUpcomingTrips(for: station, direction: 0)
+    }
+    
+    var upcomingTripsDirection1: [(time: String, minutes: Int, trip: MetroTrip)] {
+        getUpcomingTrips(for: station, direction: 1)
+    }
+    
+    private func getUpcomingTrips(for station: MetroStation, direction: Int) -> [(time: String, minutes: Int, trip: MetroTrip)] {
+        let activeServiceId = metroService.getActiveServiceId()
+        
+        // Filter trips by direction and active service
+        let filteredTrips = metroService.trips
+            .filter { $0.direction == direction && $0.serviceId == activeServiceId }
+        
+        var upcoming: [(String, Int, MetroTrip)] = []
+        let now = Date()
+        let calendar = Calendar.current
+        let currentHour = calendar.component(.hour, from: now)
+        let currentMinute = calendar.component(.minute, from: now)
+        let currentSecond = calendar.component(.second, from: now)
+        let currentTimeInSeconds = currentHour * 3600 + currentMinute * 60 + currentSecond
+        
+        // End of day time (23:59:59)
+        let endOfDayInSeconds = 23 * 3600 + 59 * 60 + 59
+        
+        for trip in filteredTrips {
+            if let stopTime = trip.stopTimes.first(where: { $0.stopId == station.id }) {
+                let timeComponents = stopTime.departureTime.components(separatedBy: ":")
+                if timeComponents.count == 3 {
+                    let tripHour = Int(timeComponents[0]) ?? 0
+                    let tripMinute = Int(timeComponents[1]) ?? 0
+                    let tripSecond = Int(timeComponents[2]) ?? 0
+                    let tripTimeInSeconds = tripHour * 3600 + tripMinute * 60 + tripSecond
+                    
+                    // Only include trips that are today and haven't passed yet
+                    if tripTimeInSeconds >= currentTimeInSeconds && tripTimeInSeconds <= endOfDayInSeconds {
+                        let minutesUntil = (tripTimeInSeconds - currentTimeInSeconds) / 60
+                        let formattedTime = formatTimeToAMPM(stopTime.departureTime)
+                        upcoming.append((formattedTime, minutesUntil, trip))
+                    }
+                }
+            }
+        }
+        
+        // Sort by time (earliest first) and limit to next 1
+        upcoming.sort { (trip1: (String, Int, MetroTrip), trip2: (String, Int, MetroTrip)) -> Bool in
+            trip1.1 < trip2.1
+        }
+        return Array(upcoming.prefix(1))
+    }
+    
+    private func formatTimeToAMPM(_ time24: String) -> String {
+        let components = time24.components(separatedBy: ":")
+        guard components.count >= 2,
+              let hour = Int(components[0]),
+              let minute = Int(components[1]) else {
+            return time24
+        }
+        
+        let hour12: Int
+        let period: String
+        
+        if hour == 0 {
+            hour12 = 12
+            period = "AM"
+        } else if hour < 12 {
+            hour12 = hour
+            period = "AM"
+        } else if hour == 12 {
+            hour12 = 12
+            period = "PM"
+        } else {
+            hour12 = hour - 12
+            period = "PM"
+        }
+        
+        return String(format: "%d:%02d %@", hour12, minute, period)
+    }
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            VStack(spacing: 8) {
+                Text("Next train in both directions")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.vertical, 12)
+            
+            Divider()
+            
+            // Direction 0 (Southbound: Aluva → Tripunithura)
+            if !upcomingTripsDirection0.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.blue)
+                        
+                        Text("Aluva → Tripunithura")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.bottom, 4)
+                    
+                    if let firstTrip = upcomingTripsDirection0.first {
+                        SingleStationTimingRow(
+                            time: firstTrip.time,
+                            minutes: firstTrip.minutes,
+                            trip: firstTrip.trip,
+                            station: station,
+                            direction: 0,
+                            metroService: metroService,
+                            isExpanded: expandedTripId == firstTrip.trip.id,
+                            onTap: {
+                                if expandedTripId == firstTrip.trip.id {
+                                    expandedTripId = nil
+                                } else {
+                                    expandedTripId = firstTrip.trip.id
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            
+            // Direction 1 (Northbound: Tripunithura → Aluva)
+            if !upcomingTripsDirection1.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !upcomingTripsDirection0.isEmpty {
+                        Divider()
+                            .padding(.vertical, 8)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.red)
+                        
+                        Text("Tripunithura → Aluva")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.bottom, 4)
+                    
+                    if let firstTrip = upcomingTripsDirection1.first {
+                        SingleStationTimingRow(
+                            time: firstTrip.time,
+                            minutes: firstTrip.minutes,
+                            trip: firstTrip.trip,
+                            station: station,
+                            direction: 1,
+                            metroService: metroService,
+                            isExpanded: expandedTripId == firstTrip.trip.id,
+                            onTap: {
+                                if expandedTripId == firstTrip.trip.id {
+                                    expandedTripId = nil
+                                } else {
+                                    expandedTripId = firstTrip.trip.id
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            
+            // Empty state if no trains
+            if upcomingTripsDirection0.isEmpty && upcomingTripsDirection1.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "clock.badge.xmark")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.gray.opacity(0.4))
+                    
+                    Text("No upcoming trains")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            }
+        }
+    }
+}
+
+// MARK: - Single Station Timing Row
+struct SingleStationTimingRow: View {
+    let time: String
+    let minutes: Int
+    let trip: MetroTrip
+    let station: MetroStation
+    let direction: Int
+    @ObservedObject var metroService: MetroDataService
+    let isExpanded: Bool
+    let onTap: () -> Void
+    
+    var stationsInRoute: [MetroStation] {
+        // Get all stations from current station to end of line in this direction
+        guard let stationIndex = metroService.stations.firstIndex(where: { $0.id == station.id }) else {
+            return []
+        }
+        
+        if direction == 0 {
+            // Southbound: from current station to end (Tripunithura)
+            return Array(metroService.stations[stationIndex...])
+        } else {
+            // Northbound: from current station to start (Aluva) - reverse order
+            return Array(metroService.stations[...stationIndex]).reversed()
+        }
+    }
+    
+    func getArrivalTime(for station: MetroStation) -> String {
+        guard let stopTime = trip.stopTimes.first(where: { $0.stopId == station.id }) else {
+            return "N/A"
+        }
+        return formatTimeToAMPM(stopTime.arrivalTime)
+    }
+    
+    private func formatTimeToAMPM(_ time24: String) -> String {
+        let components = time24.components(separatedBy: ":")
+        guard components.count >= 2,
+              let hour = Int(components[0]),
+              let minute = Int(components[1]) else {
+            return time24
+        }
+        
+        let hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour)
+        let ampm = hour >= 12 ? "PM" : "AM"
+        return String(format: "%d:%02d %@", hour12, minute, ampm)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main row content
+            HStack(spacing: 12) {
+                // Time Display
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(time)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    
+                    if minutes > 0 {
+                        Text("in \(minutes) min")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Now")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.green)
+                    }
+                }
+                .frame(width: 100, alignment: .leading)
+                
+                Spacer()
+                
+                // Arrow indicator
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onTap()
+            }
+            
+            // Expanded content showing stations
+            if isExpanded {
+                VStack(spacing: 0) {
+                    Divider()
+                        .padding(.leading, 60)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Route Stations")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.top, 8)
+                            .opacity(isExpanded ? 1 : 0)
+                            .animation(.easeIn(duration: 0.2).delay(0.1), value: isExpanded)
+                        
+                        // Continuous line connecting all stations
+                        HStack(spacing: 12) {
+                            // Continuous vertical line on the left
+                            ZStack(alignment: .top) {
+                                if stationsInRoute.count > 1 {
+                                    // Continuous line from first to last station
+                                    Rectangle()
+                                        .fill(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    stationColor(for: stationsInRoute[0], at: 0).opacity(0.6),
+                                                    stationColor(for: stationsInRoute[stationsInRoute.count - 1], at: stationsInRoute.count - 1).opacity(0.6)
+                                                ]),
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(width: 2)
+                                        .frame(height: CGFloat(stationsInRoute.count - 1) * 48)
+                                        .offset(y: 6) // Offset to align with circle centers
+                                        .opacity(isExpanded ? 1 : 0)
+                                        .animation(.easeIn(duration: 0.3), value: isExpanded)
+                                }
+                                
+                                // Station circles positioned on the line
+                                VStack(spacing: 0) {
+                                    ForEach(Array(stationsInRoute.enumerated()), id: \.element.id) { index, station in
+                                        Circle()
+                                            .fill(stationColor(for: station, at: index))
+                                            .frame(width: 12, height: 12)
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(Color(.systemBackground), lineWidth: 2)
+                                            )
+                                            .opacity(isExpanded ? 1 : 0)
+                                            .scaleEffect(isExpanded ? 1 : 0.5)
+                                            .animation(.spring(response: 0.3, dampingFraction: 0.7).delay(isExpanded ? Double(index) * 0.05 + 0.1 : 0), value: isExpanded)
+                                        
+                                        if index < stationsInRoute.count - 1 {
+                                            Spacer()
+                                                .frame(height: 36)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(width: 12, alignment: .leading)
+                            
+                            // Station names - all aligned consistently
+                            VStack(spacing: 0) {
+                                ForEach(Array(stationsInRoute.enumerated()), id: \.element.id) { index, station in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(station.name)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundStyle(.primary)
+                                            .opacity(isExpanded ? 1 : 0)
+                                            .offset(x: isExpanded ? 0 : -10)
+                                            .animation(.easeIn(duration: 0.25).delay(isExpanded ? Double(index) * 0.05 + 0.15 : 0), value: isExpanded)
+                                        
+                                        Group {
+                                            if index == 0 {
+                                                Text("Starting Point")
+                                                    .font(.system(size: 12, weight: .regular))
+                                                    .foregroundStyle(.blue)
+                                            } else {
+                                                Text("Arrives at \(getArrivalTime(for: station))")
+                                                    .font(.system(size: 12, weight: .regular))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .opacity(isExpanded ? 1 : 0)
+                                        .offset(x: isExpanded ? 0 : -10)
+                                        .animation(.easeIn(duration: 0.25).delay(isExpanded ? Double(index) * 0.05 + 0.2 : 0), value: isExpanded)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 6)
+                                    .frame(height: 48, alignment: .leading)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isExpanded)
+    }
+    
+    private func stationColor(for station: MetroStation, at index: Int) -> Color {
+        if index == 0 {
+            return .blue // Starting point
+        } else if index == stationsInRoute.count - 1 {
+            return .red // Final destination
+        } else {
+            return .green // Intermediate stations
+        }
     }
 }
 
@@ -846,25 +1234,9 @@ struct RouteSummaryCard: View {
             Spacer()
             
             if let fare = fare {
-                Button {
-                    onBookTicket()
-                } label: {
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("₹\(Int(fare.price))")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(colorScheme == .dark ? .black : .white)
-                        
-                        Text(isTicketBooked ? "Show Ticket" : "Book Ticket")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(colorScheme == .dark ? .black : .white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(colorScheme == .dark ? Color.white : Color.black)
-                    )
-                }
+                Text("₹\(Int(fare.price))")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.primary)
             }
         }
         .padding(.vertical, 8)
@@ -1162,62 +1534,51 @@ struct CustomSegmentedControl<T: Hashable & RawRepresentable<String>>: View {
         switch rawValue {
         case "metro":
             return "tram.fill"
-        case "bus":
-            return "bus.fill"
-        case "cab":
-            return "car.fill"
-        case "e-scooter":
-            return "bolt.car.fill"
-        case "cycle":
-            return "bicycle"
-        case "ferry":
-            return "sailboat.fill"
+        case "coming soon":
+            return "clock.fill"
         default:
             return "circle.fill"
         }
     }
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(options, id: \.self) { option in
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selection = option
-                        }
-                    } label: {
-                        ZStack {
-                            // Selected background with pill shape - black in light mode, white in dark mode
-                            if selection == option {
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(colorScheme == .dark ? Color.white : Color.black)
-                                    .shadow(color: colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                                    .matchedGeometryEffect(id: "selectedTab", in: animation)
-                            }
-                            
-                            // Content: Icon + Text for selected, Icon only for unselected
-                            HStack(spacing: 6) {
-                                Image(systemName: icon(for: option))
-                                    .font(.system(size: 16, weight: selection == option ? .semibold : .medium))
-                                    .foregroundStyle(selection == option ? (colorScheme == .dark ? .black : .white) : .primary)
-                                
-                                if selection == option {
-                                    Text(option.rawValue)
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(colorScheme == .dark ? .black : .white)
-                                }
-                            }
-                            .padding(.horizontal, selection == option ? 18 : 12)
-                            .padding(.vertical, 10)
-                        }
-                        .contentShape(Rectangle())
+        HStack(spacing: 8) {
+            ForEach(options, id: \.self) { option in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selection = option
                     }
-                    .buttonStyle(.plain)
+                } label: {
+                    ZStack {
+                        // Selected background with pill shape - black in light mode, white in dark mode
+                        if selection == option {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(colorScheme == .dark ? Color.white : Color.black)
+                                .shadow(color: colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                .matchedGeometryEffect(id: "selectedTab", in: animation)
+                        }
+                        
+                        // Content: Icon + Text for both selected and unselected
+                        HStack(spacing: 6) {
+                            Image(systemName: icon(for: option))
+                                .font(.system(size: 16, weight: selection == option ? .semibold : .medium))
+                                .foregroundStyle(selection == option ? (colorScheme == .dark ? .black : .white) : .primary)
+                            
+                            Text(option.rawValue)
+                                .font(.system(size: 15, weight: selection == option ? .semibold : .medium))
+                                .foregroundStyle(selection == option ? (colorScheme == .dark ? .black : .white) : .primary)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color(.systemGray6))
@@ -1226,90 +1587,114 @@ struct CustomSegmentedControl<T: Hashable & RawRepresentable<String>>: View {
     }
 }
 
-// MARK: - Bus View
-struct BusView: View {
-    var body: some View {
-        ComingSoonView(
+// MARK: - Coming Soon Category View
+struct ComingSoonCategoryView: View {
+    struct ComingSoonFeature {
+        let name: String
+        let icon: String
+        let description: String
+    }
+    
+    let features: [ComingSoonFeature] = [
+        ComingSoonFeature(
+            name: "Bus",
             icon: "bus.fill",
-            title: "Coming Soon",
-            message: "Bus services will be available soon"
-        )
-    }
-}
-
-// MARK: - Cab View
-struct CabView: View {
-    var body: some View {
-        ComingSoonView(
+            description: "Public bus services and routes"
+        ),
+        ComingSoonFeature(
+            name: "Cab",
             icon: "car.fill",
-            title: "Coming Soon",
-            message: "Cab booking will be available soon"
-        )
-    }
-}
-
-// MARK: - E-scooter View
-struct EScooterView: View {
-    var body: some View {
-        ComingSoonView(
+            description: "Taxi and cab booking"
+        ),
+        ComingSoonFeature(
+            name: "E-scooter",
             icon: "bolt.car.fill",
-            title: "Coming Soon",
-            message: "E-scooter rental will be available soon"
-        )
-    }
-}
-
-// MARK: - Cycle View
-struct CycleView: View {
-    var body: some View {
-        ComingSoonView(
+            description: "Electric scooter rentals"
+        ),
+        ComingSoonFeature(
+            name: "Cycle",
             icon: "bicycle",
-            title: "Coming Soon",
-            message: "Cycle rental will be available soon"
-        )
-    }
-}
-
-// MARK: - Ferry View
-struct FerryView: View {
-    var body: some View {
-        ComingSoonView(
+            description: "Bicycle rental services"
+        ),
+        ComingSoonFeature(
+            name: "Ferry",
             icon: "sailboat.fill",
-            title: "Coming Soon",
-            message: "Ferry services will be available soon"
+            description: "Ferry and water transport"
         )
-    }
-}
-
-// MARK: - Coming Soon View
-struct ComingSoonView: View {
-    let icon: String
-    let title: String
-    let message: String
+    ]
     
     var body: some View {
-        VStack {
-            Spacer()
-            
-            VStack(spacing: 20) {
-                Image(systemName: icon)
-                    .font(.system(size: 80))
-                    .foregroundStyle(.gray.opacity(0.5))
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 12) {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(.gray.opacity(0.5))
+                    
+                    Text("Upcoming Features")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.top, 30)
+                .padding(.bottom, 20)
                 
-                Text(title)
-                    .font(.system(size: 28, weight: .bold))
+                // Features List
+                VStack(spacing: 12) {
+                    ForEach(features, id: \.name) { feature in
+                        ComingSoonFeatureCard(feature: feature)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 20)
+            }
+        }
+    }
+}
+
+// MARK: - Coming Soon Feature Card
+struct ComingSoonFeatureCard: View {
+    let feature: ComingSoonCategoryView.ComingSoonFeature
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+                    .frame(width: 60, height: 60)
+                
+                Image(systemName: feature.icon)
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary)
+            }
+            
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                Text(feature.name)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.primary)
                 
-                Text(message)
-                    .font(.system(size: 16, weight: .medium))
+                Text(feature.description)
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
-            .padding(40)
             
             Spacer()
+            
+            // Status Indicator
+            Image(systemName: "clock")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
     }
 }
 
